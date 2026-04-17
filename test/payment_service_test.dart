@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:fastpay_sdk/src/core/api_client.dart';
 import 'package:fastpay_sdk/src/core/fastpay_config.dart';
-import 'package:fastpay_sdk/src/models/card_details.dart';
 import 'package:fastpay_sdk/src/models/customer.dart';
 import 'package:fastpay_sdk/src/services/fastpay_payment_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -32,16 +31,18 @@ void main() {
       expect(request.method, 'POST');
       expect(request.url.path, '/payments/session');
       expect(request.headers['Authorization'], 'Bearer access_token');
+      expect(request.headers['X-Client-Source'], 'flutter_sdk');
+      expect(request.headers['X-SDK-Version'], '0.0.1');
+      expect(request.headers['X-Request-Id'], isNotEmpty);
       return http.Response(
         jsonEncode(<String, dynamic>{
           'status': 'success',
           'message': 'Session created',
           'data': <String, dynamic>{
-            'session_id': 'sess_123',
+            'payment_id': 'pay_123',
+            'reference': 'ref_123',
             'status': 'created',
-            'amount': 150.0,
-            'currency': 'EGP',
-            'merchant_order_id': 'ORD-10001',
+            'checkout_url': 'https://merchant.example.com/checkout/pay_123',
           },
         }),
         200,
@@ -51,57 +52,49 @@ void main() {
     final session = await service.createSession(
       amount: 150,
       currency: 'EGP',
-      customer: const Customer(name: 'Elmira'),
+      customer: const Customer(name: 'Elmira', email: 'elmira@example.com'),
       merchantOrderId: 'ORD-10001',
+      checkoutUrl: 'https://merchant.example.com/checkout',
+      callbackUrl: 'https://merchant.example.com/api/fastpay/callback',
     );
 
-    expect(session.sessionId, 'sess_123');
+    expect(session.paymentId, 'pay_123');
+    expect(session.sessionId, 'pay_123');
+    expect(session.reference, 'ref_123');
     expect(session.status, 'created');
-    expect(session.currency, 'EGP');
+    expect(session.checkoutUrl, contains('pay_123'));
   });
 
-  test('processTransaction maps nested card details', () async {
+  test('getPayment maps the current backend payment payload', () async {
     final FastPayPaymentService service = buildService((
       http.Request request,
     ) async {
-      expect(request.method, 'POST');
-      expect(request.url.path, '/payments/process-transaction');
-
-      final Map<String, dynamic> body =
-          jsonDecode(request.body) as Map<String, dynamic>;
-      expect(body['session_id'], 'sess_123');
-      expect(body['card_details']['number'], '4242424242424242');
+      expect(request.method, 'GET');
+      expect(request.url.path, '/payments/pay_123');
 
       return http.Response(
         jsonEncode(<String, dynamic>{
           'status': 'success',
-          'message': 'Approved',
+          'message': 'Payment retrieved successfully',
           'data': <String, dynamic>{
-            'transaction_id': 'txn_123',
-            'session_id': 'sess_123',
-            'status': 'authorized',
+            'id': 11,
+            'external_reference': 'pay_123',
+            'provider_reference': 'provider_123',
+            'status': 'completed',
             'amount': 150.0,
             'currency': 'EGP',
-            'card_details': <String, dynamic>{'last4': '4242', 'brand': 'visa'},
+            'payment_method': 'card',
           },
         }),
         200,
       );
     });
 
-    final transaction = await service.processTransaction(
-      sessionId: 'sess_123',
-      cardDetails: const CardDetails(
-        number: '4242424242424242',
-        expiryMonth: 12,
-        expiryYear: 2030,
-        cvv: '123',
-        cardholderName: 'Elmira',
-      ),
-    );
+    final transaction = await service.getPayment(paymentId: 'pay_123');
 
-    expect(transaction.transactionId, 'txn_123');
-    expect(transaction.cardDetails?.last4, '4242');
-    expect(transaction.message, 'Approved');
+    expect(transaction.paymentId, 'pay_123');
+    expect(transaction.providerReference, 'provider_123');
+    expect(transaction.paymentMethod, 'card');
+    expect(transaction.status, 'completed');
   });
 }

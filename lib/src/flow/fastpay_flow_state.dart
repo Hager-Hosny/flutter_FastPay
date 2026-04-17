@@ -52,7 +52,7 @@ class FastPayFlowState {
       stage == FastPayFlowStage.creatingSession ||
       stage == FastPayFlowStage.processing;
 
-  /// Whether the card form should be interactive.
+  /// Whether the hosted-checkout state is ready for user interaction.
   bool get canSubmitCard => stage == FastPayFlowStage.ready;
 
   /// Returns a copy with the provided overrides.

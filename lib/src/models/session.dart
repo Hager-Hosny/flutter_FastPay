@@ -8,6 +8,7 @@ class Session {
   /// Creates a [Session] model.
   const Session({
     this.sessionId,
+    this.reference,
     this.status,
     this.amount,
     this.currency,
@@ -22,7 +23,13 @@ class Session {
   });
 
   /// Payment session identifier returned by the backend.
+  ///
+  /// The current FastPay backend returns `payment_id` rather than a dedicated
+  /// `session_id`. This field is kept as a compatibility alias.
   final String? sessionId;
+
+  /// Merchant-visible reference associated with the payment session.
+  final String? reference;
 
   /// Current session status.
   ///
@@ -64,15 +71,17 @@ class Session {
 
   /// Builds a [Session] instance from a JSON map.
   factory Session.fromJson(Map<String, dynamic> json) {
+    final String? paymentId = asString(json['payment_id'] ?? json['id']);
     return Session(
-      sessionId: asString(json['session_id'] ?? json['id']),
+      sessionId: asString(json['session_id']) ?? paymentId,
+      reference: asString(json['reference']),
       status: asString(json['status']),
       amount: asDouble(json['amount']),
       currency: asString(json['currency']),
       merchantOrderId: asString(
         json['merchant_order_id'] ?? json['merchantOrderId'],
       ),
-      paymentId: asString(json['payment_id'] ?? json['paymentId']),
+      paymentId: paymentId,
       checkoutUrl: asString(
         json['checkout_url'] ?? json['hosted_url'] ?? json['redirect_url'],
       ),
@@ -90,6 +99,7 @@ class Session {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       'session_id': sessionId,
+      'reference': reference,
       'status': status,
       'amount': amount,
       'currency': currency,
@@ -106,6 +116,7 @@ class Session {
   /// Returns a copy of this model with the provided overrides.
   Session copyWith({
     String? sessionId,
+    String? reference,
     String? status,
     double? amount,
     String? currency,
@@ -120,6 +131,7 @@ class Session {
   }) {
     return Session(
       sessionId: sessionId ?? this.sessionId,
+      reference: reference ?? this.reference,
       status: status ?? this.status,
       amount: amount ?? this.amount,
       currency: currency ?? this.currency,
@@ -140,6 +152,7 @@ class Session {
     return identical(this, other) ||
         other is Session &&
             other.sessionId == sessionId &&
+            other.reference == reference &&
             other.status == status &&
             other.amount == amount &&
             other.currency == currency &&
@@ -157,6 +170,7 @@ class Session {
     const DeepCollectionEquality deepEquality = DeepCollectionEquality();
     return Object.hash(
       sessionId,
+      reference,
       status,
       amount,
       currency,

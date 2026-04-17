@@ -1,6 +1,5 @@
 import 'package:fastpay_sdk/src/flow/fastpay_flow_controller.dart';
 import 'package:fastpay_sdk/src/flow/fastpay_flow_state.dart';
-import 'package:fastpay_sdk/src/models/card_details.dart';
 import 'package:fastpay_sdk/src/models/customer.dart';
 import 'package:fastpay_sdk/src/models/session.dart';
 import 'package:fastpay_sdk/src/models/transaction.dart';
@@ -17,45 +16,39 @@ void main() {
     await controller.startCheckout(
       amount: 150,
       currency: 'EGP',
-      customer: const Customer(name: 'Elmira'),
+      customer: const Customer(name: 'Elmira', email: 'elmira@example.com'),
+      merchantOrderId: 'ORD-10001',
+      checkoutUrl: 'https://merchant.example.com/checkout',
+      callbackUrl: 'https://merchant.example.com/api/fastpay/callback',
     );
 
     expect(controller.state.stage, FastPayFlowStage.ready);
-    expect(controller.state.session?.sessionId, 'sess_123');
+    expect(controller.state.session?.paymentId, 'pay_123');
 
-    final result = await controller.submitCard(
-      cardDetails: const CardDetails(
-        number: '4242424242424242',
-        expiryMonth: 12,
-        expiryYear: 2030,
-        cvv: '123',
-        cardholderName: 'Elmira',
-      ),
-    );
+    final result = await controller.checkStatus();
 
     expect(result.isSuccess, isTrue);
     expect(controller.state.stage, FastPayFlowStage.success);
-    expect(controller.state.transaction?.transactionId, 'txn_123');
+    expect(controller.state.transaction?.paymentId, 'pay_123');
   });
 
-  test('controller exposes failure state when processing throws', () async {
+  test('controller exposes failure state when status lookup throws', () async {
     final FakePaymentService paymentService = FakePaymentService(
-      throwOnProcess: true,
+      throwOnGetPayment: true,
     );
     final FastPayFlowController controller = FastPayFlowController(
       paymentService: paymentService,
     );
 
-    await controller.startCheckout(amount: 150, currency: 'EGP');
-    final result = await controller.submitCard(
-      cardDetails: const CardDetails(
-        number: '4000000000000002',
-        expiryMonth: 12,
-        expiryYear: 2030,
-        cvv: '123',
-        cardholderName: 'Failure Case',
-      ),
+    await controller.startCheckout(
+      amount: 150,
+      currency: 'EGP',
+      customer: const Customer(name: 'Failure Case', email: 'failure@test.dev'),
+      merchantOrderId: 'ORD-10002',
+      checkoutUrl: 'https://merchant.example.com/checkout',
+      callbackUrl: 'https://merchant.example.com/api/fastpay/callback',
     );
+    final result = await controller.checkStatus();
 
     expect(result.isFailure, isTrue);
     expect(controller.state.stage, FastPayFlowStage.failure);
@@ -63,23 +56,26 @@ void main() {
 }
 
 class FakePaymentService implements PaymentService {
-  FakePaymentService({this.throwOnProcess = false});
+  FakePaymentService({this.throwOnGetPayment = false});
 
-  final bool throwOnProcess;
+  final bool throwOnGetPayment;
 
   @override
   Future<Session> createSession({
     required double amount,
     required String currency,
-    Customer? customer,
-    String? merchantOrderId,
+    required Customer customer,
+    required String merchantOrderId,
+    required String checkoutUrl,
+    required String callbackUrl,
     Map<String, dynamic>? metadata,
     String? redirectUrl,
-    String? callbackUrl,
-    String source = 'sdk',
   }) async {
     return Session(
-      sessionId: 'sess_123',
+      sessionId: 'pay_123',
+      paymentId: 'pay_123',
+      reference: 'ref_123',
+      checkoutUrl: '$checkoutUrl/pay_123',
       status: 'created',
       amount: amount,
       currency: currency,
@@ -88,41 +84,16 @@ class FakePaymentService implements PaymentService {
   }
 
   @override
-  Future<Transaction> getTransactionStatus({
-    String? paymentId,
-    String? transactionId,
-    String? sessionId,
-  }) async {
-    return Transaction(
-      transactionId: transactionId ?? 'txn_123',
-      sessionId: sessionId ?? 'sess_123',
-      paymentId: paymentId,
-      status: 'authorized',
-      amount: 150,
-      currency: 'EGP',
-    );
-  }
-
-  @override
-  Future<Transaction> processTransaction({
-    required String sessionId,
-    required CardDetails cardDetails,
-    double? amount,
-    String? currency,
-    Customer? customer,
-    String paymentMethod = 'card',
-    bool? saveCard,
-    String? merchantOrderId,
-    Map<String, dynamic>? metadata,
-  }) async {
-    if (throwOnProcess) {
-      throw StateError('Payment declined');
+  Future<Transaction> getPayment({required String paymentId}) async {
+    if (throwOnGetPayment) {
+      throw StateError('Payment lookup failed');
     }
 
-    return const Transaction(
-      transactionId: 'txn_123',
-      sessionId: 'sess_123',
-      status: 'authorized',
+    return Transaction(
+      transactionId: '11',
+      paymentId: paymentId,
+      externalReference: paymentId,
+      status: 'completed',
       amount: 150,
       currency: 'EGP',
     );
@@ -130,18 +101,25 @@ class FakePaymentService implements PaymentService {
 
   @override
   Future<Transaction> retryPayment({
-    String? paymentId,
-    String? transactionId,
-    String? sessionId,
-    CardDetails? cardDetails,
-    String paymentMethod = 'card',
-    Map<String, dynamic>? metadata,
+    required String paymentId,
+    String? redirectUrl,
+    String? callbackUrl,
   }) async {
     return Transaction(
-      transactionId: transactionId ?? 'txn_retry',
-      sessionId: sessionId ?? 'sess_123',
+      transactionId: '12',
       paymentId: paymentId,
-      status: 'authorized',
+      status: 'pending',
+      amount: 150,
+      currency: 'EGP',
+    );
+  }
+
+  @override
+  Future<Transaction> cancelPayment({required String paymentId}) async {
+    return Transaction(
+      transactionId: '13',
+      paymentId: paymentId,
+      status: 'cancelled',
       amount: 150,
       currency: 'EGP',
     );

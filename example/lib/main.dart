@@ -6,7 +6,7 @@ void main() {
     const FastPayConfig(
       baseUrl: 'https://api.fastpay.dpdns.org',
       apiKey: 'pk_test_replace_me',
-      apiSecret: 'sk_test_replace_me',
+      accessToken: 'merchant_backend_issued_token',
       merchantId: 'merchant_demo',
     ),
   );
@@ -143,6 +143,8 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
         phone: '605-590-6006',
       ),
       merchantOrderId: 'ORD-10001',
+      checkoutUrl: 'https://merchant.example.com/checkout',
+      callbackUrl: 'https://merchant.example.com/api/fastpay/callback',
     );
 
     if (!mounted) {

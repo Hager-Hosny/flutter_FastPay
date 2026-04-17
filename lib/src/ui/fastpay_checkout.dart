@@ -13,11 +13,13 @@ class FastPayCheckout {
     BuildContext context, {
     required double amount,
     required String currency,
-    Customer? customer,
-    String? merchantOrderId,
+    required Customer customer,
+    required String merchantOrderId,
+    required String checkoutUrl,
+    required String callbackUrl,
     Map<String, dynamic>? metadata,
     String? redirectUrl,
-    String? callbackUrl,
+    Future<void> Function(String checkoutUrl)? onOpenCheckout,
   }) async {
     final PaymentResult? result = await Navigator.of(context)
         .push<PaymentResult>(
@@ -28,9 +30,11 @@ class FastPayCheckout {
               currency: currency,
               customer: customer,
               merchantOrderId: merchantOrderId,
+              checkoutUrl: checkoutUrl,
+              callbackUrl: callbackUrl,
               metadata: metadata,
               redirectUrl: redirectUrl,
-              callbackUrl: callbackUrl,
+              onOpenCheckout: onOpenCheckout,
             ),
           ),
         );

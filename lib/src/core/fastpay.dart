@@ -1,6 +1,5 @@
 import 'package:http/http.dart' as http;
 
-import '../models/card_details.dart';
 import '../models/customer.dart';
 import '../models/session.dart';
 import '../models/transaction.dart';
@@ -156,79 +155,45 @@ class FastPayPayments {
   Future<Session> createSession({
     required double amount,
     required String currency,
-    Customer? customer,
-    String? merchantOrderId,
+    required Customer customer,
+    required String merchantOrderId,
+    required String checkoutUrl,
+    required String callbackUrl,
     Map<String, dynamic>? metadata,
     String? redirectUrl,
-    String? callbackUrl,
-    String source = 'sdk',
   }) {
     return _paymentService.createSession(
       amount: amount,
       currency: currency,
       customer: customer,
       merchantOrderId: merchantOrderId,
+      checkoutUrl: checkoutUrl,
+      callbackUrl: callbackUrl,
       metadata: metadata,
       redirectUrl: redirectUrl,
-      callbackUrl: callbackUrl,
-      source: source,
     );
   }
 
-  /// Processes a card payment.
-  Future<Transaction> processPayment({
-    required String sessionId,
-    required CardDetails cardDetails,
-    double? amount,
-    String? currency,
-    Customer? customer,
-    String paymentMethod = 'card',
-    bool? saveCard,
-    String? merchantOrderId,
-    Map<String, dynamic>? metadata,
-  }) {
-    return _paymentService.processTransaction(
-      sessionId: sessionId,
-      cardDetails: cardDetails,
-      amount: amount,
-      currency: currency,
-      customer: customer,
-      paymentMethod: paymentMethod,
-      saveCard: saveCard,
-      merchantOrderId: merchantOrderId,
-      metadata: metadata,
-    );
-  }
-
-  /// Returns the latest payment or transaction status.
-  Future<Transaction> getStatus({
-    String? paymentId,
-    String? transactionId,
-    String? sessionId,
-  }) {
-    return _paymentService.getTransactionStatus(
-      paymentId: paymentId,
-      transactionId: transactionId,
-      sessionId: sessionId,
-    );
+  /// Returns the latest payment snapshot.
+  Future<Transaction> getPayment({required String paymentId}) {
+    return _paymentService.getPayment(paymentId: paymentId);
   }
 
   /// Retries a failed payment.
   Future<Transaction> retryPayment({
-    String? paymentId,
-    String? transactionId,
-    String? sessionId,
-    CardDetails? cardDetails,
-    String paymentMethod = 'card',
-    Map<String, dynamic>? metadata,
+    required String paymentId,
+    String? redirectUrl,
+    String? callbackUrl,
   }) {
     return _paymentService.retryPayment(
       paymentId: paymentId,
-      transactionId: transactionId,
-      sessionId: sessionId,
-      cardDetails: cardDetails,
-      paymentMethod: paymentMethod,
-      metadata: metadata,
+      redirectUrl: redirectUrl,
+      callbackUrl: callbackUrl,
     );
+  }
+
+  /// Cancels an existing payment.
+  Future<Transaction> cancelPayment({required String paymentId}) {
+    return _paymentService.cancelPayment(paymentId: paymentId);
   }
 }

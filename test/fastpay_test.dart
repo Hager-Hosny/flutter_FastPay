@@ -35,7 +35,11 @@ void main() {
       expect(body['api_secret'], 'sk_test');
 
       return http.Response(
-        jsonEncode(<String, dynamic>{'access_token': 'resolved_token'}),
+        jsonEncode(<String, dynamic>{
+          'status': 'success',
+          'message': 'Token generated',
+          'data': <String, dynamic>{'access_token': 'resolved_token'},
+        }),
         200,
       );
     });

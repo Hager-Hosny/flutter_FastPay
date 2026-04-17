@@ -1,6 +1,5 @@
 import '../core/api_client.dart';
 import '../core/api_exception.dart';
-import '../models/card_details.dart';
 import '../models/customer.dart';
 import '../models/session.dart';
 import '../models/transaction.dart';
@@ -19,12 +18,12 @@ class FastPayPaymentService implements PaymentService {
   Future<Session> createSession({
     required double amount,
     required String currency,
-    Customer? customer,
-    String? merchantOrderId,
+    required Customer customer,
+    required String merchantOrderId,
+    required String checkoutUrl,
+    required String callbackUrl,
     Map<String, dynamic>? metadata,
     String? redirectUrl,
-    String? callbackUrl,
-    String source = 'sdk',
   }) async {
     final Map<String, dynamic> response = await _apiClient.post(
       _apiClient.config.endpoints.createSession,
@@ -32,18 +31,18 @@ class FastPayPaymentService implements PaymentService {
         'amount': amount,
         'currency': currency,
         'merchant_order_id': merchantOrderId,
-        'customer': customer?.toJson(),
-        'metadata': metadata,
+        'customer': customer.toJson(),
+        'metadata': metadata == null ? null : <Map<String, dynamic>>[metadata],
+        'checkout_url': checkoutUrl,
         'redirect_url': redirectUrl,
         'callback_url': callbackUrl,
-        'source': source,
       }..removeWhere((String _, dynamic value) => value == null),
     );
 
     final Session session = Session.fromJson(_extractPayload(response));
-    if (session.sessionId == null || session.sessionId!.isEmpty) {
+    if (session.paymentId == null || session.paymentId!.isEmpty) {
       throw ApiException.parsing(
-        'FastPay createSession response did not include session_id.',
+        'FastPay createSession response did not include payment_id.',
         details: response,
       );
     }
@@ -52,123 +51,56 @@ class FastPayPaymentService implements PaymentService {
   }
 
   @override
-  Future<Transaction> processTransaction({
-    required String sessionId,
-    required CardDetails cardDetails,
-    double? amount,
-    String? currency,
-    Customer? customer,
-    String paymentMethod = 'card',
-    bool? saveCard,
-    String? merchantOrderId,
-    Map<String, dynamic>? metadata,
-  }) async {
-    final Map<String, dynamic> response = await _apiClient.post(
-      _apiClient.config.endpoints.processTransaction,
-      body: <String, dynamic>{
-        'session_id': sessionId,
-        'payment_method': paymentMethod,
-        'merchant_order_id': merchantOrderId,
-        'amount': amount,
-        'currency': currency,
-        'customer': customer?.toJson(),
-        'save_card': saveCard,
-        'metadata': metadata,
-        'card_details': <String, dynamic>{
-          'number': cardDetails.number,
-          'expiry_month': cardDetails.expiryMonth,
-          'expiry_year': cardDetails.expiryYear,
-          'cvv': cardDetails.cvv,
-          'cardholder_name': cardDetails.cardholderName,
-          'token': cardDetails.token,
-        }..removeWhere((String _, dynamic value) => value == null),
-      }..removeWhere((String _, dynamic value) => value == null),
-    );
-
-    return _parseTransaction(response);
-  }
-
-  @override
-  Future<Transaction> getTransactionStatus({
-    String? paymentId,
-    String? transactionId,
-    String? sessionId,
-  }) async {
-    if (paymentId != null && paymentId.isNotEmpty) {
-      final String path = _apiClient.config.endpoints.paymentDetailsTemplate
-          .replaceFirst('{payment_id}', paymentId);
-      final Map<String, dynamic> response = await _apiClient.get(path);
-      return _parseTransaction(response);
-    }
-
-    final Map<String, dynamic> response = await _apiClient.post(
-      _apiClient.config.endpoints.getTransactionStatus,
-      body: <String, dynamic>{
-        'transaction_id': transactionId,
-        'session_id': sessionId,
-      }..removeWhere((String _, dynamic value) => value == null),
-    );
-
-    return _parseTransaction(response);
+  Future<Transaction> getPayment({required String paymentId}) async {
+    final String path = _apiClient.config.endpoints.paymentDetailsTemplate
+        .replaceFirst('{payment_id}', paymentId);
+    final Map<String, dynamic> response = await _apiClient.get(path);
+    return _parsePayment(response, paymentId: paymentId);
   }
 
   @override
   Future<Transaction> retryPayment({
-    String? paymentId,
-    String? transactionId,
-    String? sessionId,
-    CardDetails? cardDetails,
-    String paymentMethod = 'card',
-    Map<String, dynamic>? metadata,
+    required String paymentId,
+    String? redirectUrl,
+    String? callbackUrl,
   }) async {
-    final Map<String, dynamic> requestBody = <String, dynamic>{
-      'transaction_id': transactionId,
-      'session_id': sessionId,
-      'payment_method': paymentMethod,
-      'card_details': cardDetails == null
-          ? null
-          : <String, dynamic>{
-              'number': cardDetails.number,
-              'expiry_month': cardDetails.expiryMonth,
-              'expiry_year': cardDetails.expiryYear,
-              'cvv': cardDetails.cvv,
-              'cardholder_name': cardDetails.cardholderName,
-              'token': cardDetails.token,
-            },
-      'metadata': metadata,
-    }..removeWhere((String _, dynamic value) => value == null);
-
-    final Map<String, dynamic> response;
-    if (paymentId != null && paymentId.isNotEmpty) {
-      final String path = _apiClient.config.endpoints.retryPaymentTemplate
-          .replaceFirst('{payment_id}', paymentId);
-      response = await _apiClient.post(path, body: requestBody);
-    } else {
-      response = await _apiClient.post(
-        _apiClient.config.endpoints.retryPayment,
-        body: requestBody,
-      );
-    }
-
-    return _parseTransaction(response);
+    final String path = _apiClient.config.endpoints.retryPaymentTemplate
+        .replaceFirst('{payment_id}', paymentId);
+    final Map<String, dynamic> response = await _apiClient.post(
+      path,
+      body: <String, dynamic>{
+        'redirect_url': redirectUrl,
+        'callback_url': callbackUrl,
+      }..removeWhere((String _, dynamic value) => value == null),
+    );
+    return _parsePayment(response, paymentId: paymentId);
   }
 
-  Transaction _parseTransaction(Map<String, dynamic> response) {
+  @override
+  Future<Transaction> cancelPayment({required String paymentId}) async {
+    final String path = _apiClient.config.endpoints.cancelPaymentTemplate
+        .replaceFirst('{payment_id}', paymentId);
+    final Map<String, dynamic> response = await _apiClient.post(path);
+    return _parsePayment(response, paymentId: paymentId);
+  }
+
+  Transaction _parsePayment(
+    Map<String, dynamic> response, {
+    required String paymentId,
+  }) {
     final Map<String, dynamic> payload = _extractPayload(response);
     final String? envelopeMessage = asString(response['message']);
     final Map<String, dynamic> mergedPayload = <String, dynamic>{
       ...payload,
+      if (!payload.containsKey('payment_id')) 'payment_id': paymentId,
       if (!payload.containsKey('message') && envelopeMessage != null)
         'message': envelopeMessage,
     };
 
     final Transaction transaction = Transaction.fromJson(mergedPayload);
-    if ((transaction.transactionId == null ||
-            transaction.transactionId!.isEmpty) &&
-        (transaction.paymentId == null || transaction.paymentId!.isEmpty) &&
-        (transaction.sessionId == null || transaction.sessionId!.isEmpty)) {
+    if (transaction.paymentId == null || transaction.paymentId!.isEmpty) {
       throw ApiException.parsing(
-        'FastPay transaction response did not include any stable identifier.',
+        'FastPay payment response did not include payment_id.',
         details: response,
       );
     }

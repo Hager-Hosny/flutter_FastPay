@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-import '../models/card_details.dart';
 import '../models/customer.dart';
 import '../models/payment_result.dart';
 import '../models/session.dart';
@@ -24,11 +23,12 @@ class FastPayFlowController extends ChangeNotifier {
   Future<void> startCheckout({
     required double amount,
     required String currency,
-    Customer? customer,
-    String? merchantOrderId,
+    required Customer customer,
+    required String merchantOrderId,
+    required String checkoutUrl,
+    required String callbackUrl,
     Map<String, dynamic>? metadata,
     String? redirectUrl,
-    String? callbackUrl,
   }) async {
     _updateState(
       _state.copyWith(
@@ -44,9 +44,10 @@ class FastPayFlowController extends ChangeNotifier {
         currency: currency,
         customer: customer,
         merchantOrderId: merchantOrderId,
+        checkoutUrl: checkoutUrl,
+        callbackUrl: callbackUrl,
         metadata: metadata,
         redirectUrl: redirectUrl,
-        callbackUrl: callbackUrl,
       );
 
       _updateState(
@@ -64,85 +65,16 @@ class FastPayFlowController extends ChangeNotifier {
     }
   }
 
-  /// Submits the card form and resolves a typed [PaymentResult].
-  Future<PaymentResult> submitCard({
-    required CardDetails cardDetails,
-    Customer? customer,
-    String? merchantOrderId,
-    Map<String, dynamic>? metadata,
-  }) async {
-    final Session? session = _state.session;
-    if (session?.sessionId == null || session!.sessionId!.isEmpty) {
-      return _fail(
-        message: 'FastPay checkout is missing a valid session.',
-        transaction: _state.transaction,
-      );
-    }
-
-    _updateState(
-      _state.copyWith(
-        stage: FastPayFlowStage.processing,
-        clearErrorMessage: true,
-        clearResult: true,
-      ),
-    );
-
-    try {
-      final bool retrying =
-          _state.result?.isFailure == true &&
-          (_state.transaction?.transactionId != null ||
-              _state.transaction?.paymentId != null);
-
-      final Transaction transaction = retrying
-          ? await _paymentService.retryPayment(
-              paymentId: _state.transaction?.paymentId ?? session.paymentId,
-              transactionId: _state.transaction?.transactionId,
-              sessionId: session.sessionId,
-              cardDetails: cardDetails,
-              metadata: metadata,
-            )
-          : await _paymentService.processTransaction(
-              sessionId: session.sessionId!,
-              cardDetails: cardDetails,
-              amount: session.amount,
-              currency: session.currency,
-              customer: customer ?? session.customer,
-              merchantOrderId: merchantOrderId ?? session.merchantOrderId,
-              metadata: metadata,
-            );
-
-      final Transaction resolvedTransaction = await _resolveStatus(
-        transaction,
-        session: session,
-      );
-      final PaymentResult result = _buildResult(
-        transaction: resolvedTransaction,
-        session: session,
-      );
-
-      _updateState(
-        _state.copyWith(
-          stage: _stageFromResult(result),
-          transaction: resolvedTransaction,
-          result: result,
-          errorMessage: result.errorMessage,
-        ),
-      );
-
-      return result;
-    } catch (error) {
-      return _fail(message: error.toString(), transaction: _state.transaction);
-    }
-  }
-
   /// Re-checks the latest payment status.
   Future<PaymentResult> checkStatus() async {
     final Transaction? transaction = _state.transaction;
     final Session? session = _state.session;
+    final String? paymentId =
+        transaction?.paymentId ?? session?.paymentId ?? session?.sessionId;
 
-    if (transaction == null && session == null) {
+    if (paymentId == null || paymentId.isEmpty) {
       return _fail(
-        message: 'FastPay status check requires an active payment attempt.',
+        message: 'FastPay status check requires a payment_id.',
         transaction: null,
       );
     }
@@ -155,10 +87,8 @@ class FastPayFlowController extends ChangeNotifier {
     );
 
     try {
-      final Transaction refreshed = await _paymentService.getTransactionStatus(
-        paymentId: transaction?.paymentId ?? session?.paymentId,
-        transactionId: transaction?.transactionId,
-        sessionId: transaction?.sessionId ?? session?.sessionId,
+      final Transaction refreshed = await _paymentService.getPayment(
+        paymentId: paymentId,
       );
 
       final PaymentResult result = _buildResult(
@@ -190,27 +120,6 @@ class FastPayFlowController extends ChangeNotifier {
         clearResult: true,
       ),
     );
-  }
-
-  Future<Transaction> _resolveStatus(
-    Transaction transaction, {
-    required Session session,
-  }) async {
-    final String normalized = (transaction.status ?? '').toLowerCase();
-    if (_successStatuses.contains(normalized) ||
-        _failureStatuses.contains(normalized)) {
-      return transaction;
-    }
-
-    try {
-      return await _paymentService.getTransactionStatus(
-        paymentId: transaction.paymentId ?? session.paymentId,
-        transactionId: transaction.transactionId,
-        sessionId: transaction.sessionId ?? session.sessionId,
-      );
-    } catch (_) {
-      return transaction;
-    }
   }
 
   PaymentResult _buildResult({

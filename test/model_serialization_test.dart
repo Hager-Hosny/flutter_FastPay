@@ -4,12 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('session model serializes nested customer and metadata', () {
     const Session session = Session(
-      sessionId: 'sess_123',
+      sessionId: 'pay_123',
       status: 'pending',
       amount: 150.0,
       currency: 'EGP',
       merchantOrderId: 'ORD-10001',
       paymentId: 'pay_123',
+      reference: 'ref_123',
       customer: Customer(
         customerId: 'cust_123',
         name: 'FastPay User',
@@ -19,7 +20,8 @@ void main() {
       metadata: <String, dynamic>{'channel': 'mobile'},
     );
 
-    expect(session.toJson()['session_id'], 'sess_123');
+    expect(session.toJson()['session_id'], 'pay_123');
+    expect(session.toJson()['reference'], 'ref_123');
     expect(session.toJson()['merchant_order_id'], 'ORD-10001');
     expect(session.toJson()['customer'], isA<Map<String, dynamic>>());
   });
@@ -53,7 +55,8 @@ void main() {
           errorMessage: 'Approved',
           transaction: const Transaction(
             transactionId: 'txn_123',
-            sessionId: 'sess_123',
+            sessionId: 'pay_123',
+            paymentId: 'pay_123',
             status: 'authorized',
             amount: 150,
             currency: 'EGP',

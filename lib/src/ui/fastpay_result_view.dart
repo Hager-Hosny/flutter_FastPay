@@ -63,7 +63,14 @@ class FastPayResultView extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
-          if (result.transaction?.transactionId != null) ...<Widget>[
+          if (result.transaction?.paymentId != null) ...<Widget>[
+            const SizedBox(height: 16),
+            Text(
+              'Payment ID: ${result.transaction!.paymentId}',
+              style: theme.textTheme.labelLarge,
+              textAlign: TextAlign.center,
+            ),
+          ] else if (result.transaction?.transactionId != null) ...<Widget>[
             const SizedBox(height: 16),
             Text(
               'Transaction ID: ${result.transaction!.transactionId}',

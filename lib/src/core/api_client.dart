@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../utils/json_utils.dart';
@@ -212,6 +214,10 @@ class ApiClient {
   }) {
     final Map<String, String> headers = <String, String>{
       'Accept': 'application/json',
+      'X-Client-Source': _config.clientSource,
+      'X-SDK-Version': _config.sdkVersion,
+      'X-Platform': _config.platform ?? _defaultPlatform(),
+      'X-Request-Id': _buildRequestId(),
       ..._config.defaultHeaders,
     };
 
@@ -236,6 +242,26 @@ class ApiClient {
     }
 
     return headers;
+  }
+
+  String _defaultPlatform() {
+    if (kIsWeb) {
+      return 'web';
+    }
+
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.android => 'android',
+      TargetPlatform.iOS => 'ios',
+      TargetPlatform.macOS => 'macos',
+      TargetPlatform.windows => 'windows',
+      TargetPlatform.linux => 'linux',
+      TargetPlatform.fuchsia => 'fuchsia',
+    };
+  }
+
+  String _buildRequestId() {
+    final int randomValue = Random().nextInt(1 << 32);
+    return 'fp_${DateTime.now().microsecondsSinceEpoch}_${randomValue.toRadixString(16)}';
   }
 
   Map<String, dynamic> _decodeJsonMap(String body) {

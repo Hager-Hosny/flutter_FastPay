@@ -9,6 +9,9 @@ class FastPayConfig {
     this.apiSecret,
     this.accessToken,
     this.merchantId,
+    this.clientSource = 'flutter_sdk',
+    this.sdkVersion = '0.0.1',
+    this.platform,
     this.timeout = const Duration(seconds: 30),
     this.defaultHeaders = const <String, String>{},
     this.endpoints = const FastPayEndpoints(),
@@ -29,6 +32,15 @@ class FastPayConfig {
   /// Optional merchant identifier sent as a hint header.
   final String? merchantId;
 
+  /// Source marker attached to each request for observability.
+  final String clientSource;
+
+  /// SDK version attached to each request for observability.
+  final String sdkVersion;
+
+  /// Optional client platform override.
+  final String? platform;
+
   /// Default network timeout for all requests.
   final Duration timeout;
 
@@ -45,6 +57,9 @@ class FastPayConfig {
     String? apiSecret,
     String? accessToken,
     String? merchantId,
+    String? clientSource,
+    String? sdkVersion,
+    String? platform,
     Duration? timeout,
     Map<String, String>? defaultHeaders,
     FastPayEndpoints? endpoints,
@@ -55,6 +70,9 @@ class FastPayConfig {
       apiSecret: apiSecret ?? this.apiSecret,
       accessToken: accessToken ?? this.accessToken,
       merchantId: merchantId ?? this.merchantId,
+      clientSource: clientSource ?? this.clientSource,
+      sdkVersion: sdkVersion ?? this.sdkVersion,
+      platform: platform ?? this.platform,
       timeout: timeout ?? this.timeout,
       defaultHeaders: defaultHeaders ?? this.defaultHeaders,
       endpoints: endpoints ?? this.endpoints,
