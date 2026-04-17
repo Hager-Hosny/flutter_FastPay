@@ -14,10 +14,12 @@ class ApiClient {
   ApiClient({required FastPayConfig config, http.Client? httpClient})
     : _config = config,
       _httpClient = httpClient ?? http.Client(),
+      _ownsHttpClient = httpClient == null,
       _accessToken = config.accessToken;
 
   final FastPayConfig _config;
   final http.Client _httpClient;
+  final bool _ownsHttpClient;
   String? _accessToken;
 
   /// Active SDK configuration.
@@ -53,7 +55,23 @@ class ApiClient {
 
   /// Closes the underlying HTTP client.
   void close() {
-    _httpClient.close();
+    if (_ownsHttpClient) {
+      _httpClient.close();
+    }
+  }
+
+  /// Returns a usable bearer token for the current configuration.
+  Future<String> resolveAccessToken({bool forceRefresh = false}) async {
+    await _ensureAccessToken(forceRefresh: forceRefresh);
+
+    final String? token = _accessToken ?? _config.accessToken;
+    if (token == null || token.isEmpty) {
+      throw ApiException.configuration(
+        'FastPay attempted an authenticated request without a bearer token.',
+      );
+    }
+
+    return token;
   }
 
   Future<Map<String, dynamic>> _send({
@@ -135,7 +153,11 @@ class ApiClient {
     }
 
     final String? staticToken = _config.accessToken;
-    if (!forceRefresh && staticToken != null && staticToken.isNotEmpty) {
+    if (staticToken != null &&
+        staticToken.isNotEmpty &&
+        (!forceRefresh ||
+            _config.apiSecret == null ||
+            _config.apiSecret!.isEmpty)) {
       _accessToken = staticToken;
       return;
     }

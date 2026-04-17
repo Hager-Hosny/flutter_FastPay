@@ -8,6 +8,7 @@ import '../services/fastpay_payment_service.dart';
 import '../services/payment_service.dart';
 import 'api_client.dart';
 import 'api_exception.dart';
+import 'endpoints.dart';
 import 'fastpay_config.dart';
 
 /// Static entry point for initializing and accessing the FastPay SDK.
@@ -53,6 +54,82 @@ class FastPay {
       _throwNotInitialized();
     }
     return config;
+  }
+
+  /// Returns a usable bearer token for the current or provided configuration.
+  static Future<String> resolveAccessToken([
+    FastPayConfig? initialConfig,
+  ], {
+    FastPayConfig? config,
+    String? baseUrl,
+    String? apiKey,
+    String? apiSecret,
+    String? accessToken,
+    String? merchantId,
+    Duration? timeout,
+    Map<String, String>? defaultHeaders,
+    FastPayEndpoints? endpoints,
+    http.Client? httpClient,
+    bool forceRefresh = false,
+  }) async {
+    final bool hasOverrides =
+        baseUrl != null ||
+        apiKey != null ||
+        apiSecret != null ||
+        accessToken != null ||
+        merchantId != null ||
+        timeout != null ||
+        defaultHeaders != null ||
+        endpoints != null;
+
+    if (initialConfig == null && config == null && !hasOverrides) {
+      final ApiClient apiClient = _apiClient ?? _throwNotInitialized();
+      return apiClient.resolveAccessToken(forceRefresh: forceRefresh);
+    }
+
+    final FastPayConfig? baseConfig = config ?? initialConfig ?? _config;
+    final FastPayConfig effectiveConfig;
+
+    if (baseConfig != null) {
+      effectiveConfig = baseConfig.copyWith(
+        baseUrl: baseUrl,
+        apiKey: apiKey,
+        apiSecret: apiSecret,
+        accessToken: accessToken,
+        merchantId: merchantId,
+        timeout: timeout,
+        defaultHeaders: defaultHeaders,
+        endpoints: endpoints,
+      );
+    } else {
+      if (baseUrl == null || apiKey == null) {
+        throw ApiException.configuration(
+          'FastPay.resolveAccessToken requires both baseUrl and apiKey when the SDK has not been initialized.',
+        );
+      }
+
+      effectiveConfig = FastPayConfig(
+        baseUrl: baseUrl,
+        apiKey: apiKey,
+        apiSecret: apiSecret,
+        accessToken: accessToken,
+        merchantId: merchantId,
+        timeout: timeout ?? const Duration(seconds: 30),
+        defaultHeaders: defaultHeaders ?? const <String, String>{},
+        endpoints: endpoints ?? const FastPayEndpoints(),
+      );
+    }
+
+    final ApiClient apiClient = ApiClient(
+      config: effectiveConfig,
+      httpClient: httpClient,
+    );
+
+    try {
+      return await apiClient.resolveAccessToken(forceRefresh: forceRefresh);
+    } finally {
+      apiClient.close();
+    }
   }
 
   /// Disposes the singleton resources.
