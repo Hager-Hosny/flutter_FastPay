@@ -57,9 +57,7 @@ class FastPay {
   }
 
   /// Returns a usable bearer token for the current or provided configuration.
-  static Future<String> resolveAccessToken([
-    FastPayConfig? initialConfig,
-  ], {
+  static Future<String> resolveAccessToken({
     FastPayConfig? config,
     String? baseUrl,
     String? apiKey,
@@ -82,12 +80,12 @@ class FastPay {
         defaultHeaders != null ||
         endpoints != null;
 
-    if (initialConfig == null && config == null && !hasOverrides) {
+    if (config == null && !hasOverrides) {
       final ApiClient apiClient = _apiClient ?? _throwNotInitialized();
       return apiClient.resolveAccessToken(forceRefresh: forceRefresh);
     }
 
-    final FastPayConfig? baseConfig = config ?? initialConfig ?? _config;
+    final FastPayConfig? baseConfig = config ?? _config;
     final FastPayConfig effectiveConfig;
 
     if (baseConfig != null) {

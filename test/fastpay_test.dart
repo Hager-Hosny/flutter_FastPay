@@ -41,7 +41,7 @@ void main() {
     });
 
     final String token = await FastPay.resolveAccessToken(
-      const FastPayConfig(
+      config: const FastPayConfig(
         baseUrl: 'https://api.fastpay.dpdns.org',
         apiKey: 'pk_test',
         apiSecret: 'sk_test',
