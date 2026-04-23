@@ -1,6 +1,9 @@
+import 'package:fastpay_sdk/src/models/cancel_payment_result.dart';
 import 'package:fastpay_sdk/src/models/customer.dart';
-import 'package:fastpay_sdk/src/models/session.dart';
-import 'package:fastpay_sdk/src/models/transaction.dart';
+import 'package:fastpay_sdk/src/models/payment_details.dart';
+import 'package:fastpay_sdk/src/models/payment_method.dart';
+import 'package:fastpay_sdk/src/models/payment_session.dart';
+import 'package:fastpay_sdk/src/models/retry_payment_result.dart';
 import 'package:fastpay_sdk/src/services/payment_service.dart';
 import 'package:fastpay_sdk/src/ui/fastpay_checkout_page.dart';
 import 'package:flutter/material.dart';
@@ -18,9 +21,9 @@ void main() {
           customer: const Customer(
             name: 'Elmira',
             email: 'elmira@example.com',
+            phone: '+201000000000',
           ),
           merchantOrderId: 'ORD-10001',
-          checkoutUrl: 'https://merchant.example.com/checkout',
           callbackUrl: 'https://merchant.example.com/api/fastpay/callback',
           paymentService: ImmediatePaymentService(),
         ),
@@ -34,40 +37,40 @@ void main() {
 
     expect(find.text('Hosted checkout'), findsOneWidget);
     expect(find.text('Check payment status'), findsOneWidget);
+    expect(find.textContaining('pay_123'), findsWidgets);
   });
 }
 
 class ImmediatePaymentService implements PaymentService {
   @override
-  Future<Session> createSession({
+  Future<List<PaymentMethod>> listMethods() async => const <PaymentMethod>[];
+
+  @override
+  Future<PaymentSession> createSession({
     required double amount,
     required String currency,
     required Customer customer,
     required String merchantOrderId,
-    required String checkoutUrl,
     required String callbackUrl,
     Map<String, dynamic>? metadata,
     String? redirectUrl,
   }) async {
-    return Session(
-      sessionId: 'pay_123',
+    return const PaymentSession(
       paymentId: 'pay_123',
-      status: 'created',
-      amount: amount,
-      currency: currency,
-      customer: customer,
-      checkoutUrl: '$checkoutUrl/pay_123',
+      status: 'initiated',
+      checkoutUrl: 'https://merchant.example.com/checkout/pay_123',
     );
   }
 
   @override
-  Future<Transaction> getPayment({required String paymentId}) async {
+  Future<PaymentDetails> getPayment({required String paymentId}) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<Transaction> retryPayment({
+  Future<RetryPaymentResult> retryPayment({
     required String paymentId,
+    String? paymentMethod,
     String? redirectUrl,
     String? callbackUrl,
   }) async {
@@ -75,7 +78,7 @@ class ImmediatePaymentService implements PaymentService {
   }
 
   @override
-  Future<Transaction> cancelPayment({required String paymentId}) async {
+  Future<CancelPaymentResult> cancelPayment({required String paymentId}) async {
     throw UnimplementedError();
   }
 }

@@ -56,24 +56,16 @@ class FastPayResultView extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             result.errorMessage ??
-                result.transaction?.message ??
                 'Status: ${result.status ?? 'unknown'}',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
             textAlign: TextAlign.center,
           ),
-          if (result.transaction?.paymentId != null) ...<Widget>[
+          if (result.payment?.paymentId != null) ...<Widget>[
             const SizedBox(height: 16),
             Text(
-              'Payment ID: ${result.transaction!.paymentId}',
-              style: theme.textTheme.labelLarge,
-              textAlign: TextAlign.center,
-            ),
-          ] else if (result.transaction?.transactionId != null) ...<Widget>[
-            const SizedBox(height: 16),
-            Text(
-              'Transaction ID: ${result.transaction!.transactionId}',
+              'Payment ID: ${result.payment!.paymentId}',
               style: theme.textTheme.labelLarge,
               textAlign: TextAlign.center,
             ),

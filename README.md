@@ -1,25 +1,23 @@
 # fastpay_sdk
 
-`fastpay_sdk` is a Flutter package that wraps the current FastPay backend
-contract around payment session creation, hosted checkout orchestration,
-payment lookup, and typed result handling.
+`fastpay_sdk` is a Flutter package that mirrors the current FastPay backend
+contract from `fastpay-apis`. It exposes namespaced API clients, typed models,
+typed exceptions, token storage hooks, and a built-in checkout helper.
 
 ## Features
 
-- `FastPay.initialize(...)` for one-time SDK setup
-- `FastPay.payments.createSession(...)`
-- `FastPay.payments.getPayment(...)`
-- `FastPay.payments.retryPayment(...)`
-- `FastPay.payments.cancelPayment(...)`
-- `FastPayCheckout.show(...)` for an embedded SDK checkout experience
-- Typed models for sessions, payments, customers, and payment results
-- Typed exceptions and clean service/core separation
-- Internal checkout flow with loading, ready, processing, success, failure,
-  and pending states
+- `FastPay.auth` for login, refresh, logout, and token inspection
+- `FastPay.payments` for payment methods, session creation, payment lookup,
+  retry, and cancel
+- `FastPay.transactions` for paginated transaction lists and summaries
+- `FastPay.refunds`, `FastPay.payouts`, and `FastPay.webhooks`
+- Strict client-side request validation before network calls
+- Structured exceptions with `statusCode`, `errorCode`, `fieldErrors`,
+  `requestId`, and raw payload access
+- Default in-memory token storage with pluggable `TokenStore`
+- `FastPayCheckout.show(...)` for the hosted checkout flow
 
 ## Installation
-
-Add the package to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
@@ -35,8 +33,6 @@ flutter pub get
 
 ## Initialization
 
-Initialize once before using any FastPay API or UI flow:
-
 ```dart
 import 'package:fastpay_sdk/fastpay_sdk.dart';
 
@@ -45,43 +41,30 @@ void main() {
     const FastPayConfig(
       baseUrl: 'https://api.fastpay.dpdns.org',
       apiKey: 'pk_test_replace_me',
-      accessToken: 'backend_issued_access_token',
-      merchantId: 'merchant_123',
+      apiSecret: 'sk_test_replace_me',
+      externalWebhookApiKey: 'local-webhook-key',
     ),
   );
 }
 ```
 
-For production mobile apps, prefer a backend-issued `accessToken` over putting
-`apiSecret` inside the app.
+For production mobile apps, prefer backend-issued access tokens or a custom
+`TokenStore` rather than embedding long-lived secrets in the app.
 
-## Checkout Usage
+## Auth Usage
 
 ```dart
-final result = await FastPayCheckout.show(
-  context,
-  amount: 150.0,
-  currency: 'EGP',
-  customer: const Customer(
-    name: 'Elmira Stokes',
-    email: 'elmira@example.com',
-    phone: '605-590-6006',
-  ),
-  merchantOrderId: 'ORD-10001',
-  checkoutUrl: 'https://merchant.example.com/checkout',
-  callbackUrl: 'https://merchant.example.com/api/fastpay/callback',
-);
+final TokenPair tokens = await FastPay.auth.login();
 
-if (result.isSuccess) {
-  debugPrint('Payment succeeded: ${result.transaction?.transactionId}');
-} else if (result.isPending) {
-  debugPrint('Payment pending: ${result.status}');
-} else {
-  debugPrint('Payment failed: ${result.errorMessage}');
-}
+final TokenPair refreshed = await FastPay.auth.refresh();
+
+await FastPay.auth.logout();
 ```
 
-## Direct API Usage
+The SDK stores the token pair in the configured `TokenStore` and automatically
+tries one refresh after a `401` on authenticated requests.
+
+## API Usage
 
 ```dart
 final session = await FastPay.payments.createSession(
@@ -90,65 +73,89 @@ final session = await FastPay.payments.createSession(
   customer: const Customer(
     name: 'Elmira Stokes',
     email: 'elmira@example.com',
-    phone: '605-590-6006',
+    phone: '+201000000000',
   ),
   merchantOrderId: 'ORD-10001',
-  checkoutUrl: 'https://merchant.example.com/checkout',
   callbackUrl: 'https://merchant.example.com/api/fastpay/callback',
+  redirectUrl: 'https://merchant.example.com/payment/result',
+  metadata: const <String, dynamic>{'channel': 'mobile'},
 );
 
 final payment = await FastPay.payments.getPayment(
   paymentId: session.paymentId!,
 );
 
-final latestStatus = await FastPay.payments.retryPayment(
-  paymentId: session.paymentId!,
-  redirectUrl: 'https://merchant.example.com/result',
-  callbackUrl: 'https://merchant.example.com/api/fastpay/callback',
+final summary = await FastPay.transactions.summary(
+  from: DateTime(2026, 4, 1),
+  to: DateTime(2026, 4, 30),
+  currency: 'EGP',
+);
+
+final refund = await FastPay.refunds.create(
+  transactionId: 11,
+  amount: '50.00',
+  currency: 'EGP',
+  reason: 'Customer requested refund',
 );
 ```
 
-## Architecture Overview
+## Checkout Flow
 
-The package is organized into clean layers under `lib/src/`:
+```dart
+final PaymentResult result = await FastPayCheckout.show(
+  context,
+  amount: 150.0,
+  currency: 'EGP',
+  customer: const Customer(
+    name: 'Elmira Stokes',
+    email: 'elmira@example.com',
+    phone: '+201000000000',
+  ),
+  merchantOrderId: 'ORD-10001',
+  callbackUrl: 'https://merchant.example.com/api/fastpay/callback',
+);
 
-- `core/`: SDK configuration, singleton entry point, API client, endpoints, typed errors
-- `models/`: immutable domain models with `fromJson`, `toJson`, `copyWith`, and equality
-- `services/`: typed API contract and backend-backed payment service
-- `flow/`: checkout orchestration and internal state machine
-- `ui/`: checkout page and result view
-- `utils/`: parsing helpers and input formatters
+if (result.isSuccess) {
+  debugPrint('Payment succeeded: ${result.payment?.paymentId}');
+} else if (result.isPending) {
+  debugPrint('Payment pending: ${result.status}');
+} else {
+  debugPrint('Payment failed: ${result.errorMessage}');
+}
+```
 
-Rules followed by the implementation:
+`checkoutUrl` is now generated by the backend. The old `checkoutUrl` argument
+on the checkout helper remains optional for one migration cycle and is ignored
+when the API returns `checkout_url`.
 
-- Raw JSON stays inside `core/` and `services/`
-- UI does not perform payment logic
-- Payment orchestration lives in a separate flow controller
-- API responses are converted into typed Dart models
-- Errors use typed exceptions and result objects
+## Error Handling
 
-## Backend Contract Note
+```dart
+try {
+  await FastPay.transactions.list(page: -1);
+} on ValidationApiException catch (error) {
+  debugPrint(error.fieldErrors.toString());
+} on AuthenticationApiException catch (error) {
+  debugPrint('Auth failed: ${error.message}');
+} on ApiException catch (error) {
+  debugPrint('FastPay error: $error');
+}
+```
 
-The current backend contract is centered around:
+## Token Storage
 
-- `POST /payments/session`
-- `GET /payments/{payment_id}`
-- `POST /payments/{payment_id}/retry`
-- `POST /payments/{payment_id}/cancel`
+The package uses an in-memory store by default:
 
-The SDK also attaches tracing headers on every request:
+```dart
+final TokenStore store = InMemoryTokenStore();
+```
 
-- `X-Client-Source`
-- `X-SDK-Version`
-- `X-Platform`
-- `X-Request-Id`
+You can pass a custom implementation through `FastPayConfig.tokenStore`.
 
-These headers are for observability only, not for authentication.
+## Notes
 
-## Development Notes
-
-- The SDK will automatically exchange `apiKey` + `apiSecret` for a bearer token
-  using `POST /auth/token` when `accessToken` is not supplied.
-- For mobile production usage, prefer short-lived tokens issued by your backend.
-- The included example uses placeholder merchant URLs and should be updated with
-  real endpoints before live API testing.
+- `FastPay.webhooks.dispatch(...)` uses `externalWebhookApiKey`, not the merchant
+  bearer token.
+- `FastPay.webhooks.deliverLog(...)` uses the authenticated merchant token.
+- The included example and tester app should be updated with real credentials
+  before live testing.

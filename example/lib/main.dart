@@ -113,10 +113,10 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
                     Text('Outcome: ${_lastResult!.outcome.name}'),
                     Text('Status: ${_lastResult!.status ?? 'unknown'}'),
                     Text(
-                      'Message: ${_lastResult!.errorMessage ?? _lastResult!.transaction?.message ?? 'n/a'}',
+                      'Message: ${_lastResult!.errorMessage ?? 'n/a'}',
                     ),
                     Text(
-                      'Transaction: ${_lastResult!.transaction?.transactionId ?? 'n/a'}',
+                      'Payment ID: ${_lastResult!.payment?.paymentId ?? _lastResult!.session?.paymentId ?? 'n/a'}',
                     ),
                   ],
                 ),
@@ -143,7 +143,6 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
         phone: '605-590-6006',
       ),
       merchantOrderId: 'ORD-10001',
-      checkoutUrl: 'https://merchant.example.com/checkout',
       callbackUrl: 'https://merchant.example.com/api/fastpay/callback',
     );
 

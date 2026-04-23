@@ -3,108 +3,183 @@
 This package is aligned to the current FastPay backend contract in
 `fastpay-apis`.
 
-## Supported Endpoints
+## Namespaced Clients
+
+- `FastPay.auth`
+- `FastPay.payments`
+- `FastPay.transactions`
+- `FastPay.refunds`
+- `FastPay.payouts`
+- `FastPay.webhooks`
+
+## Supported Backend Routes
 
 - `POST /auth/token`
+- `POST /auth/refresh`
+- `POST /auth/logout`
+- `GET /payment-methods`
 - `POST /payments/session`
 - `GET /payments/{payment_id}`
 - `POST /payments/{payment_id}/retry`
 - `POST /payments/{payment_id}/cancel`
+- `GET /transactions`
+- `GET /transactions/summary`
+- `POST /refunds`
+- `POST /payouts`
+- `POST /webhooks/dispatch`
+- `POST /webhooks/logs/{log_id}/deliver`
 
 ## Request Headers
 
-The SDK sends these headers on every request:
+The SDK attaches:
 
 - `Accept: application/json`
-- `Authorization: Bearer <access_token>` for protected routes
+- `Content-Type: application/json` for JSON request bodies
+- `Authorization: Bearer <access_token>` for authenticated routes
 - `X-Public-Key: <api_key>`
-- `X-Client-Source: flutter_sdk`
-- `X-SDK-Version: <sdk_version>`
-- `X-Platform: <platform>`
-- `X-Request-Id: <generated_request_id>`
+- `X-Client-Source`
+- `X-SDK-Version`
+- `X-Platform`
+- `X-Request-Id`
 
-These headers are for observability only. They are not a security boundary.
+For webhook dispatch, the SDK sends `Authorization: Bearer <externalWebhookApiKey>`
+instead of the merchant access token.
 
-## `createSession`
+## Auth
 
-### Method and Path
+### Login
 
-`POST /payments/session`
+`FastPay.auth.login()`
 
-### Required Request Fields
+Maps to `POST /auth/token` and stores:
+
+- `access_token`
+- `refresh_token`
+- `expires_in`
+
+### Refresh
+
+`FastPay.auth.refresh()`
+
+Maps to `POST /auth/refresh` with `refresh_token` in the request body.
+
+### Logout
+
+`FastPay.auth.logout()`
+
+Maps to `POST /auth/logout` and clears the local `TokenStore`.
+
+## Payments
+
+### Create Session
+
+`FastPay.payments.createSession(...)`
+
+Required fields:
 
 - `amount`
 - `currency`
 - `merchant_order_id`
 - `customer`
-- `checkout_url`
 - `callback_url`
 
-### Optional Request Fields
+Optional fields:
 
 - `redirect_url`
 - `metadata`
 
-### Example Response
+The backend generates `checkout_url`; the SDK does not send it.
 
-```json
-{
-  "status": "success",
-  "message": "Payment session created",
-  "data": {
-    "payment_id": "pay_123",
-    "reference": "ref_123",
-    "status": "created",
-    "checkout_url": "https://merchant.example.com/checkout/pay_123"
-  }
-}
-```
+### Get Payment
 
-## `getPayment`
+`FastPay.payments.getPayment(paymentId: ...)`
 
-### Method and Path
+Returns `PaymentDetails`.
 
-`GET /payments/{payment_id}`
+### Retry Payment
 
-### Example Response
+`FastPay.payments.retryPayment(...)`
 
-```json
-{
-  "status": "success",
-  "message": "Payment retrieved successfully",
-  "data": {
-    "id": 11,
-    "external_reference": "pay_123",
-    "provider_reference": "provider_123",
-    "status": "completed",
-    "amount": "150.00",
-    "currency": "EGP",
-    "payment_method": "card"
-  }
-}
-```
+Optional body fields:
 
-## `retryPayment`
-
-### Method and Path
-
-`POST /payments/{payment_id}/retry`
-
-### Optional Request Fields
-
+- `payment_method`
 - `redirect_url`
 - `callback_url`
 
-## `cancelPayment`
+Returns `RetryPaymentResult`.
 
-### Method and Path
+### Cancel Payment
 
-`POST /payments/{payment_id}/cancel`
+`FastPay.payments.cancelPayment(paymentId: ...)`
 
-## Mobile Auth Guidance
+Returns `CancelPaymentResult`.
 
-For production Flutter apps:
+## Transactions
 
-1. Keep `apiSecret` on your backend, not inside the app.
-2. Issue short-lived access tokens from your backend to the mobile app.
-3. Use the SDK with `accessToken` whenever possible.
+### List
+
+`FastPay.transactions.list(page: 0, size: 10)`
+
+Returns `PageResult<TransactionListItem>`.
+
+### Summary
+
+`FastPay.transactions.summary(from: ..., to: ..., currency: ...)`
+
+Returns `TransactionsSummary`.
+
+## Refunds
+
+`FastPay.refunds.create(...)`
+
+Required fields:
+
+- `transaction_id`
+- `amount`
+- `currency`
+
+The merchant identity is derived from the bearer token.
+
+## Payouts
+
+`FastPay.payouts.create(...)`
+
+Required fields:
+
+- `amount`
+- `currency`
+- `destination_type`
+- `destination_details`
+
+## Webhooks
+
+### Dispatch
+
+`FastPay.webhooks.dispatch(...)`
+
+Requires:
+
+- `merchant_id`
+- `event_type`
+- `payload`
+- `externalWebhookApiKey`
+
+### Deliver Stored Log
+
+`FastPay.webhooks.deliverLog(logId: ...)`
+
+Requires the merchant bearer token.
+
+## Error Types
+
+- `ValidationApiException`
+- `AuthenticationApiException`
+- `AuthorizationApiException`
+- `NotFoundApiException`
+- `BusinessRuleApiException`
+- `NetworkApiException`
+- `TimeoutApiException`
+- `ParsingApiException`
+- `ConfigurationApiException`
+- `ServerApiException`
+- `UnknownApiException`
