@@ -13,8 +13,6 @@ class FastPayEndpoints {
     this.transactionsSummary = '/transactions/summary',
     this.refunds = '/refunds',
     this.payouts = '/payouts',
-    this.webhookDispatch = '/webhooks/dispatch',
-    this.webhookLogDeliverTemplate = '/webhooks/logs/{log_id}/deliver',
   });
 
   final String authToken;
@@ -29,8 +27,6 @@ class FastPayEndpoints {
   final String transactionsSummary;
   final String refunds;
   final String payouts;
-  final String webhookDispatch;
-  final String webhookLogDeliverTemplate;
 
   String paymentDetails(String paymentId) =>
       paymentDetailsTemplate.replaceFirst('{payment_id}', paymentId);
@@ -40,9 +36,6 @@ class FastPayEndpoints {
 
   String cancelPayment(String paymentId) =>
       cancelPaymentTemplate.replaceFirst('{payment_id}', paymentId);
-
-  String deliverWebhookLog(int logId) =>
-      webhookLogDeliverTemplate.replaceFirst('{log_id}', '$logId');
 
   FastPayEndpoints copyWith({
     String? authToken,
@@ -57,8 +50,6 @@ class FastPayEndpoints {
     String? transactionsSummary,
     String? refunds,
     String? payouts,
-    String? webhookDispatch,
-    String? webhookLogDeliverTemplate,
   }) {
     return FastPayEndpoints(
       authToken: authToken ?? this.authToken,
@@ -75,9 +66,6 @@ class FastPayEndpoints {
       transactionsSummary: transactionsSummary ?? this.transactionsSummary,
       refunds: refunds ?? this.refunds,
       payouts: payouts ?? this.payouts,
-      webhookDispatch: webhookDispatch ?? this.webhookDispatch,
-      webhookLogDeliverTemplate:
-          webhookLogDeliverTemplate ?? this.webhookLogDeliverTemplate,
     );
   }
 }

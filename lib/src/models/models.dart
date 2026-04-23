@@ -12,5 +12,3 @@ export 'retry_payment_result.dart';
 export 'token_pair.dart';
 export 'transaction_list_item.dart';
 export 'transactions_summary.dart';
-export 'webhook_delivery_result.dart';
-export 'webhook_dispatch_result.dart';

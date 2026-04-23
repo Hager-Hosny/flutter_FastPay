@@ -10,7 +10,6 @@ class FastPayConfig {
     this.apiSecret,
     this.accessToken,
     this.refreshToken,
-    this.externalWebhookApiKey,
     this.merchantId,
     this.clientSource = 'flutter_sdk',
     this.sdkVersion = '0.1.0',
@@ -26,7 +25,6 @@ class FastPayConfig {
   final String? apiSecret;
   final String? accessToken;
   final String? refreshToken;
-  final String? externalWebhookApiKey;
   final String? merchantId;
   final String clientSource;
   final String sdkVersion;
@@ -55,7 +53,6 @@ class FastPayConfig {
     String? apiSecret,
     String? accessToken,
     String? refreshToken,
-    String? externalWebhookApiKey,
     String? merchantId,
     String? clientSource,
     String? sdkVersion,
@@ -71,8 +68,6 @@ class FastPayConfig {
       apiSecret: apiSecret ?? this.apiSecret,
       accessToken: accessToken ?? this.accessToken,
       refreshToken: refreshToken ?? this.refreshToken,
-      externalWebhookApiKey:
-          externalWebhookApiKey ?? this.externalWebhookApiKey,
       merchantId: merchantId ?? this.merchantId,
       clientSource: clientSource ?? this.clientSource,
       sdkVersion: sdkVersion ?? this.sdkVersion,

@@ -12,8 +12,6 @@ import '../models/retry_payment_result.dart';
 import '../models/token_pair.dart';
 import '../models/transaction_list_item.dart';
 import '../models/transactions_summary.dart';
-import '../models/webhook_delivery_result.dart';
-import '../models/webhook_dispatch_result.dart';
 import '../utils/json_utils.dart';
 import '../services/fastpay_payment_service.dart';
 import '../services/payment_service.dart';
@@ -37,7 +35,6 @@ class FastPay {
   static FastPayTransactionsClient? _transactions;
   static FastPayRefundsClient? _refunds;
   static FastPayPayoutsClient? _payouts;
-  static FastPayWebhooksClient? _webhooks;
 
   static bool get isInitialized => _apiClient != null;
 
@@ -68,7 +65,6 @@ class FastPay {
     _transactions = FastPayTransactionsClient._(_apiClient!);
     _refunds = FastPayRefundsClient._(_apiClient!);
     _payouts = FastPayPayoutsClient._(_apiClient!);
-    _webhooks = FastPayWebhooksClient._(_apiClient!);
   }
 
   static FastPayConfig get config => _config ?? _throwNotInitialized();
@@ -90,9 +86,6 @@ class FastPay {
 
   static FastPayPayoutsClient get payouts => _payouts ?? _throwNotInitialized();
 
-  static FastPayWebhooksClient get webhooks =>
-      _webhooks ?? _throwNotInitialized();
-
   static Future<String> resolveAccessToken({
     FastPayConfig? config,
     String? baseUrl,
@@ -101,7 +94,6 @@ class FastPay {
     String? accessToken,
     String? refreshToken,
     String? merchantId,
-    String? externalWebhookApiKey,
     Duration? timeout,
     Map<String, String>? defaultHeaders,
     FastPayEndpoints? endpoints,
@@ -116,7 +108,6 @@ class FastPay {
         accessToken != null ||
         refreshToken != null ||
         merchantId != null ||
-        externalWebhookApiKey != null ||
         timeout != null ||
         defaultHeaders != null ||
         endpoints != null ||
@@ -138,7 +129,6 @@ class FastPay {
         accessToken: accessToken,
         refreshToken: refreshToken,
         merchantId: merchantId,
-        externalWebhookApiKey: externalWebhookApiKey,
         timeout: timeout,
         defaultHeaders: defaultHeaders,
         endpoints: endpoints,
@@ -161,7 +151,6 @@ class FastPay {
         accessToken: accessToken,
         refreshToken: refreshToken,
         merchantId: merchantId,
-        externalWebhookApiKey: externalWebhookApiKey,
         timeout: timeout ?? const Duration(seconds: 30),
         defaultHeaders: defaultHeaders ?? const <String, String>{},
         endpoints: endpoints ?? const FastPayEndpoints(),
@@ -195,7 +184,6 @@ class FastPay {
     _transactions = null;
     _refunds = null;
     _payouts = null;
-    _webhooks = null;
     _config = null;
   }
 
@@ -404,84 +392,6 @@ class FastPayPayoutsClient {
 
     return PayoutResult.fromJson(
       _requireDataMap(envelope, operation: 'createPayout'),
-    );
-  }
-}
-
-class FastPayWebhooksClient {
-  FastPayWebhooksClient._(this._apiClient);
-
-  final ApiClient _apiClient;
-
-  Future<WebhookDispatchResult> dispatch({
-    required int merchantId,
-    required String eventType,
-    required Map<String, dynamic> payload,
-    String? environment,
-    String? eventId,
-    String? apiKey,
-  }) async {
-    if (merchantId <= 0) {
-      throw ValidationApiException(
-        message: 'merchantId must be greater than 0.',
-        fieldErrors: const <String, String>{
-          'merchantId': 'Expected a positive merchant id',
-        },
-      );
-    }
-    Validators.requireNotBlank(eventType, 'eventType');
-    if (payload.isEmpty) {
-      throw ValidationApiException(
-        message: 'payload is required.',
-        fieldErrors: const <String, String>{'payload': 'Field is required'},
-      );
-    }
-
-    final String resolvedApiKey =
-        asString(apiKey) ?? asString(_apiClient.config.externalWebhookApiKey) ?? '';
-    if (resolvedApiKey.trim().isEmpty) {
-      throw ConfigurationApiException(
-        message:
-            'FastPay webhook dispatch requires externalWebhookApiKey in config or method call.',
-      );
-    }
-
-    final ApiEnvelope envelope = await _apiClient.post(
-      _apiClient.config.endpoints.webhookDispatch,
-      requiresAuth: false,
-      extraHeaders: <String, String>{
-        'Authorization': 'Bearer $resolvedApiKey',
-      },
-      body: <String, dynamic>{
-        'merchant_id': merchantId,
-        'environment': asString(environment),
-        'event_type': eventType.trim(),
-        'event_id': asString(eventId),
-        'payload': payload,
-      }..removeWhere((String _, dynamic value) => value == null),
-    );
-
-    return WebhookDispatchResult.fromJson(
-      _requireDataMap(envelope, operation: 'dispatchWebhook'),
-    );
-  }
-
-  Future<WebhookDeliveryResult> deliverLog({required int logId}) async {
-    if (logId <= 0) {
-      throw ValidationApiException(
-        message: 'logId must be greater than 0.',
-        fieldErrors: const <String, String>{
-          'logId': 'Expected a positive log id',
-        },
-      );
-    }
-
-    final ApiEnvelope envelope = await _apiClient.post(
-      _apiClient.config.endpoints.deliverWebhookLog(logId),
-    );
-
-    return WebhookDeliveryResult.fromJson(
-      _requireDataMap(envelope, operation: 'deliverWebhookLog'),
     );
   }
 }

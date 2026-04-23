@@ -10,7 +10,6 @@ This package is aligned to the current FastPay backend contract in
 - `FastPay.transactions`
 - `FastPay.refunds`
 - `FastPay.payouts`
-- `FastPay.webhooks`
 
 ## Supported Backend Routes
 
@@ -26,8 +25,6 @@ This package is aligned to the current FastPay backend contract in
 - `GET /transactions/summary`
 - `POST /refunds`
 - `POST /payouts`
-- `POST /webhooks/dispatch`
-- `POST /webhooks/logs/{log_id}/deliver`
 
 ## Request Headers
 
@@ -41,9 +38,6 @@ The SDK attaches:
 - `X-SDK-Version`
 - `X-Platform`
 - `X-Request-Id`
-
-For webhook dispatch, the SDK sends `Authorization: Bearer <externalWebhookApiKey>`
-instead of the merchant access token.
 
 ## Auth
 
@@ -151,25 +145,6 @@ Required fields:
 - `destination_type`
 - `destination_details`
 
-## Webhooks
-
-### Dispatch
-
-`FastPay.webhooks.dispatch(...)`
-
-Requires:
-
-- `merchant_id`
-- `event_type`
-- `payload`
-- `externalWebhookApiKey`
-
-### Deliver Stored Log
-
-`FastPay.webhooks.deliverLog(logId: ...)`
-
-Requires the merchant bearer token.
-
 ## Error Types
 
 - `ValidationApiException`
@@ -183,3 +158,7 @@ Requires the merchant bearer token.
 - `ConfigurationApiException`
 - `ServerApiException`
 - `UnknownApiException`
+
+## Notes
+
+- Webhook delivery is handled automatically by backend jobs, so the Flutter SDK does not expose webhook dispatch or manual redelivery methods.
