@@ -30,9 +30,10 @@ class FastPayResultView extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final _ResultTone tone = _toneForResult(result);
-    final double? amount = result.transaction?.amount ?? result.session?.amount;
-    final String? currency =
-        result.transaction?.currency ?? result.session?.currency;
+    final String? amount = result.payment?.amount;
+    final String? currency = result.payment?.currency;
+    final String? paymentId =
+        result.payment?.paymentId ?? result.session?.paymentId;
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -63,9 +64,7 @@ class FastPayResultView extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            result.errorMessage ??
-                result.transaction?.message ??
-                _defaultMessage(result),
+            result.errorMessage ?? _defaultMessage(result),
             style: theme.textTheme.bodyMedium?.copyWith(
               color: FastPayCheckoutPalette.textSecondary,
               height: 1.5,
@@ -83,7 +82,7 @@ class FastPayResultView extends StatelessWidget {
               child: Column(
                 children: <Widget>[
                   Text(
-                    formatFastPayAmount(amount, currency),
+                    '$amount $currency',
                     style: theme.textTheme.headlineSmall?.copyWith(
                       color: tone.amountForeground,
                       fontWeight: FontWeight.w800,
@@ -92,7 +91,7 @@ class FastPayResultView extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Charged through FastPay secure checkout',
+                    'FastPay latest payment snapshot',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: tone.amountForeground.withValues(alpha: 0.82),
                       fontWeight: FontWeight.w600,
@@ -105,20 +104,20 @@ class FastPayResultView extends StatelessWidget {
           ],
           const SizedBox(height: 24),
           _ResultDetailRow(label: 'Status', value: result.status ?? 'unknown'),
-          if (result.transaction?.transactionId != null)
-            _ResultDetailRow(
-              label: 'Transaction',
-              value: formatFastPayId(result.transaction!.transactionId!),
-            ),
-          if (result.transaction?.paymentId != null)
+          if (paymentId != null)
             _ResultDetailRow(
               label: 'Payment ID',
-              value: formatFastPayId(result.transaction!.paymentId!),
+              value: formatFastPayId(paymentId),
             ),
-          if (result.session?.sessionId != null)
+          if (result.session?.reference != null)
             _ResultDetailRow(
-              label: 'Session',
-              value: formatFastPayId(result.session!.sessionId!),
+              label: 'Reference',
+              value: result.session!.reference!,
+            ),
+          if (result.payment?.paymentMethod != null)
+            _ResultDetailRow(
+              label: 'Method',
+              value: result.payment!.paymentMethod!,
             ),
           const SizedBox(height: 24),
           if (result.isPending && onRefreshStatus != null) ...<Widget>[

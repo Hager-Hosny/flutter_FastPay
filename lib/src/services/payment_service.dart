@@ -1,49 +1,31 @@
-import '../models/card_details.dart';
+import '../models/cancel_payment_result.dart';
 import '../models/customer.dart';
-import '../models/session.dart';
-import '../models/transaction.dart';
+import '../models/payment_details.dart';
+import '../models/payment_method.dart';
+import '../models/payment_session.dart';
+import '../models/retry_payment_result.dart';
 
-/// Contract used by the SDK flow controller to manage payment API calls.
 abstract class PaymentService {
-  /// Creates a payment session.
-  Future<Session> createSession({
+  Future<List<PaymentMethod>> listMethods();
+
+  Future<PaymentSession> createSession({
     required double amount,
     required String currency,
-    Customer? customer,
-    String? merchantOrderId,
+    required Customer customer,
+    required String merchantOrderId,
+    required String callbackUrl,
     Map<String, dynamic>? metadata,
     String? redirectUrl,
+  });
+
+  Future<PaymentDetails> getPayment({required String paymentId});
+
+  Future<RetryPaymentResult> retryPayment({
+    required String paymentId,
+    String? paymentMethod,
+    String? redirectUrl,
     String? callbackUrl,
-    String source = 'sdk',
   });
 
-  /// Processes a payment transaction for an existing session.
-  Future<Transaction> processTransaction({
-    required String sessionId,
-    required CardDetails cardDetails,
-    double? amount,
-    String? currency,
-    Customer? customer,
-    String paymentMethod = 'card',
-    bool? saveCard,
-    String? merchantOrderId,
-    Map<String, dynamic>? metadata,
-  });
-
-  /// Fetches the latest transaction status.
-  Future<Transaction> getTransactionStatus({
-    String? paymentId,
-    String? transactionId,
-    String? sessionId,
-  });
-
-  /// Retries a payment after a failed attempt.
-  Future<Transaction> retryPayment({
-    String? paymentId,
-    String? transactionId,
-    String? sessionId,
-    CardDetails? cardDetails,
-    String paymentMethod = 'card',
-    Map<String, dynamic>? metadata,
-  });
+  Future<CancelPaymentResult> cancelPayment({required String paymentId});
 }

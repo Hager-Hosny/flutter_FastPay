@@ -1,5 +1,4 @@
 import 'package:fastpay_sdk/fastpay_sdk.dart';
-import 'package:fastpay_sdk/src/ui/fastpay_checkout_theme.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -7,7 +6,7 @@ void main() {
     const FastPayConfig(
       baseUrl: 'https://api.fastpay.dpdns.org',
       apiKey: 'pk_test_replace_me',
-      apiSecret: 'sk_test_replace_me',
+      accessToken: 'merchant_backend_issued_token',
       merchantId: 'merchant_demo',
     ),
   );
@@ -49,6 +48,10 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final String paymentId =
+        _lastResult?.payment?.paymentId ??
+        _lastResult?.session?.paymentId ??
+        'n/a';
 
     return Scaffold(
       appBar: AppBar(
@@ -124,13 +127,9 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
                   const SizedBox(height: 6),
                   Text('Status: ${_lastResult!.status ?? 'unknown'}'),
                   const SizedBox(height: 6),
-                  Text(
-                    'Message: ${_lastResult!.errorMessage ?? _lastResult!.transaction?.message ?? 'n/a'}',
-                  ),
+                  Text('Message: ${_lastResult!.errorMessage ?? 'n/a'}'),
                   const SizedBox(height: 6),
-                  Text(
-                    'Transaction: ${_lastResult!.transaction?.transactionId ?? 'n/a'}',
-                  ),
+                  Text('Payment ID: $paymentId'),
                 ],
               ),
             ),
@@ -155,6 +154,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
         phone: '605-590-6006',
       ),
       merchantOrderId: 'ORD-10001',
+      callbackUrl: 'https://merchant.example.com/api/fastpay/callback',
     );
 
     if (!mounted) {
