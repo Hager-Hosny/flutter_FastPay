@@ -3,15 +3,24 @@ import 'package:flutter/services.dart';
 
 import '../models/card_details.dart';
 import '../utils/card_input_formatters.dart';
+import 'fastpay_checkout_theme.dart';
 
 /// Card entry form embedded in the FastPay checkout page.
 class FastPayCardForm extends StatefulWidget {
   /// Creates a [FastPayCardForm].
   const FastPayCardForm({
     super.key,
+    required this.amount,
+    required this.currency,
     required this.enabled,
     required this.onSubmit,
   });
+
+  /// Display amount used in the CTA.
+  final double amount;
+
+  /// Display currency used in the CTA.
+  final String currency;
 
   /// Whether inputs should be interactive.
   final bool enabled;
@@ -50,18 +59,37 @@ class _FastPayCardFormState extends State<FastPayCardForm> {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
     return Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
+          Text(
+            'Card information',
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: FastPayCheckoutPalette.textPrimary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Enter the details exactly as they appear on your card.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: FastPayCheckoutPalette.textSecondary,
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 24),
           TextFormField(
             controller: _cardholderController,
             enabled: widget.enabled,
             textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(
-              labelText: 'Cardholder name',
-              hintText: 'Name on card',
+            decoration: fastPayInputDecoration(
+              label: 'Cardholder name',
+              hint: 'Name on card',
+              prefixIcon: const Icon(Icons.person_outline_rounded),
             ),
             validator: (String? value) {
               if (value == null || value.trim().isEmpty) {
@@ -76,9 +104,10 @@ class _FastPayCardFormState extends State<FastPayCardForm> {
             enabled: widget.enabled,
             keyboardType: TextInputType.number,
             textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(
-              labelText: 'Card number',
-              hintText: '4111 1111 1111 1111',
+            decoration: fastPayInputDecoration(
+              label: 'Card number',
+              hint: '4111 1111 1111 1111',
+              prefixIcon: const Icon(Icons.credit_card_rounded),
             ),
             inputFormatters: <TextInputFormatter>[
               FilteringTextInputFormatter.digitsOnly,
@@ -101,9 +130,10 @@ class _FastPayCardFormState extends State<FastPayCardForm> {
                   enabled: widget.enabled,
                   keyboardType: TextInputType.number,
                   textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Expiry',
-                    hintText: 'MM/YY',
+                  decoration: fastPayInputDecoration(
+                    label: 'Expiry date',
+                    hint: 'MM/YY',
+                    prefixIcon: const Icon(Icons.calendar_today_outlined),
                   ),
                   inputFormatters: <TextInputFormatter>[
                     FilteringTextInputFormatter.digitsOnly,
@@ -134,9 +164,10 @@ class _FastPayCardFormState extends State<FastPayCardForm> {
                   controller: _cvvController,
                   enabled: widget.enabled,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'CVV',
-                    hintText: '123',
+                  decoration: fastPayInputDecoration(
+                    label: 'Security code',
+                    hint: '123',
+                    prefixIcon: const Icon(Icons.lock_outline_rounded),
                   ),
                   inputFormatters: <TextInputFormatter>[
                     FilteringTextInputFormatter.digitsOnly,
@@ -155,9 +186,48 @@ class _FastPayCardFormState extends State<FastPayCardForm> {
             ],
           ),
           const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: FastPayCheckoutPalette.primarySoft,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Row(
+              children: <Widget>[
+                const Icon(
+                  Icons.verified_user_outlined,
+                  color: FastPayCheckoutPalette.primary,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '256-bit encryption keeps your payment details secure.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: FastPayCheckoutPalette.primaryDark,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
           FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: FastPayCheckoutPalette.primary,
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(56),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              textStyle: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             onPressed: widget.enabled ? _submit : null,
-            child: const Text('Pay now'),
+            child: Text(
+              'Pay ${formatFastPayAmount(widget.amount, widget.currency)}',
+            ),
           ),
         ],
       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/payment_result.dart';
+import 'fastpay_checkout_theme.dart';
 
 /// Result UI rendered after processing a payment attempt.
 class FastPayResultView extends StatelessWidget {
@@ -29,27 +30,34 @@ class FastPayResultView extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final _ResultTone tone = _toneForResult(result);
+    final double? amount = result.transaction?.amount ?? result.session?.amount;
+    final String? currency =
+        result.transaction?.currency ?? result.session?.currency;
 
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: tone.background,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: tone.border),
-      ),
+      decoration: fastPaySurfaceDecoration(),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          CircleAvatar(
-            radius: 32,
-            backgroundColor: tone.iconBackground,
-            child: Icon(tone.icon, size: 32, color: tone.iconColor),
+          Center(
+            child: Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: tone.iconBackground,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(tone.icon, size: 34, color: tone.iconColor),
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Text(
             tone.title,
             style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
+              color: FastPayCheckoutPalette.textPrimary,
+              fontWeight: FontWeight.w800,
             ),
             textAlign: TextAlign.center,
           ),
@@ -57,65 +65,197 @@ class FastPayResultView extends StatelessWidget {
           Text(
             result.errorMessage ??
                 result.transaction?.message ??
-                'Status: ${result.status ?? 'unknown'}',
+                _defaultMessage(result),
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+              color: FastPayCheckoutPalette.textSecondary,
+              height: 1.5,
             ),
             textAlign: TextAlign.center,
           ),
-          if (result.transaction?.transactionId != null) ...<Widget>[
-            const SizedBox(height: 16),
-            Text(
-              'Transaction ID: ${result.transaction!.transactionId}',
-              style: theme.textTheme.labelLarge,
-              textAlign: TextAlign.center,
+          if (amount != null && currency != null) ...<Widget>[
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+              decoration: BoxDecoration(
+                color: tone.amountBackground,
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Column(
+                children: <Widget>[
+                  Text(
+                    formatFastPayAmount(amount, currency),
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      color: tone.amountForeground,
+                      fontWeight: FontWeight.w800,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Charged through FastPay secure checkout',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: tone.amountForeground.withValues(alpha: 0.82),
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
           ],
           const SizedBox(height: 24),
-          if (result.isFailure && onRetry != null)
-            OutlinedButton(onPressed: onRetry, child: const Text('Try again')),
-          if (result.isPending && onRefreshStatus != null)
-            OutlinedButton(
+          _ResultDetailRow(label: 'Status', value: result.status ?? 'unknown'),
+          if (result.transaction?.transactionId != null)
+            _ResultDetailRow(
+              label: 'Transaction',
+              value: formatFastPayId(result.transaction!.transactionId!),
+            ),
+          if (result.transaction?.paymentId != null)
+            _ResultDetailRow(
+              label: 'Payment ID',
+              value: formatFastPayId(result.transaction!.paymentId!),
+            ),
+          if (result.session?.sessionId != null)
+            _ResultDetailRow(
+              label: 'Session',
+              value: formatFastPayId(result.session!.sessionId!),
+            ),
+          const SizedBox(height: 24),
+          if (result.isPending && onRefreshStatus != null) ...<Widget>[
+            FilledButton(
+              style: _primaryButtonStyle(theme),
               onPressed: onRefreshStatus,
               child: const Text('Refresh status'),
             ),
-          const SizedBox(height: 12),
-          FilledButton(onPressed: onDone, child: const Text('Done')),
+            const SizedBox(height: 12),
+          ],
+          if (result.isFailure && onRetry != null) ...<Widget>[
+            FilledButton(
+              style: _primaryButtonStyle(theme),
+              onPressed: onRetry,
+              child: const Text('Try again'),
+            ),
+            const SizedBox(height: 12),
+          ],
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: FastPayCheckoutPalette.textPrimary,
+              side: const BorderSide(color: FastPayCheckoutPalette.border),
+              minimumSize: const Size.fromHeight(54),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              textStyle: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            onPressed: onDone,
+            child: const Text('Done'),
+          ),
         ],
       ),
     );
   }
 
+  ButtonStyle _primaryButtonStyle(ThemeData theme) {
+    return FilledButton.styleFrom(
+      backgroundColor: FastPayCheckoutPalette.primary,
+      foregroundColor: Colors.white,
+      minimumSize: const Size.fromHeight(54),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      textStyle: theme.textTheme.titleMedium?.copyWith(
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+
+  String _defaultMessage(PaymentResult result) {
+    if (result.isSuccess) {
+      return 'Your payment was confirmed and the order is ready to continue.';
+    }
+
+    if (result.isPending) {
+      return 'We are waiting for the final payment confirmation from the gateway.';
+    }
+
+    return 'We could not complete the transaction. You can review the details and try again.';
+  }
+
   _ResultTone _toneForResult(PaymentResult result) {
     if (result.isSuccess) {
       return const _ResultTone(
-        title: 'Payment successful',
+        title: 'Payment Successful',
         icon: Icons.check_rounded,
-        background: Color(0xFFF0FDF4),
-        border: Color(0xFFBBF7D0),
-        iconBackground: Color(0xFFDCFCE7),
-        iconColor: Color(0xFF15803D),
+        iconBackground: FastPayCheckoutPalette.successSoft,
+        iconColor: FastPayCheckoutPalette.success,
+        amountBackground: FastPayCheckoutPalette.primary,
+        amountForeground: Colors.white,
       );
     }
 
     if (result.isPending) {
       return const _ResultTone(
-        title: 'Payment pending',
+        title: 'Payment Pending',
         icon: Icons.schedule_rounded,
-        background: Color(0xFFFFFBEB),
-        border: Color(0xFFFDE68A),
-        iconBackground: Color(0xFFFEF3C7),
-        iconColor: Color(0xFFB45309),
+        iconBackground: FastPayCheckoutPalette.warningSoft,
+        iconColor: FastPayCheckoutPalette.warning,
+        amountBackground: FastPayCheckoutPalette.warningSoft,
+        amountForeground: FastPayCheckoutPalette.textPrimary,
       );
     }
 
     return const _ResultTone(
-      title: 'Payment failed',
+      title: 'Payment Failed',
       icon: Icons.close_rounded,
-      background: Color(0xFFFEF2F2),
-      border: Color(0xFFFECACA),
-      iconBackground: Color(0xFFFEE2E2),
-      iconColor: Color(0xFFB91C1C),
+      iconBackground: FastPayCheckoutPalette.dangerSoft,
+      iconColor: FastPayCheckoutPalette.danger,
+      amountBackground: FastPayCheckoutPalette.dangerSoft,
+      amountForeground: FastPayCheckoutPalette.textPrimary,
+    );
+  }
+}
+
+class _ResultDetailRow extends StatelessWidget {
+  const _ResultDetailRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: FastPayCheckoutPalette.surfaceMuted,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: FastPayCheckoutPalette.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: FastPayCheckoutPalette.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+              textAlign: TextAlign.end,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -124,16 +264,16 @@ class _ResultTone {
   const _ResultTone({
     required this.title,
     required this.icon,
-    required this.background,
-    required this.border,
     required this.iconBackground,
     required this.iconColor,
+    required this.amountBackground,
+    required this.amountForeground,
   });
 
   final String title;
   final IconData icon;
-  final Color background;
-  final Color border;
   final Color iconBackground;
   final Color iconColor;
+  final Color amountBackground;
+  final Color amountForeground;
 }

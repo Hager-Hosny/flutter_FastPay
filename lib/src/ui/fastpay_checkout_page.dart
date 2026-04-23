@@ -7,6 +7,7 @@ import '../models/customer.dart';
 import '../models/payment_result.dart';
 import '../services/payment_service.dart';
 import 'fastpay_card_form.dart';
+import 'fastpay_checkout_theme.dart';
 import 'fastpay_result_view.dart';
 
 /// Internal checkout page used by [FastPayCheckout.show].
@@ -77,115 +78,114 @@ class _FastPayCheckoutPageState extends State<FastPayCheckoutPage> {
     final ThemeData theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('FastPay Checkout'),
-        actions: <Widget>[
-          IconButton(
-            tooltip: 'Close',
-            onPressed: () => _close(_controller.state.result),
-            icon: const Icon(Icons.close_rounded),
+      backgroundColor: FastPayCheckoutPalette.background,
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: <Color>[Color(0xFFF7F8FC), Color(0xFFEEF2FF)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
           ),
-        ],
-      ),
-      body: AnimatedBuilder(
-        animation: _controller,
-        builder: (BuildContext context, _) {
-          final FastPayFlowState state = _controller.state;
+        ),
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (BuildContext context, _) {
+            final FastPayFlowState state = _controller.state;
 
-          return SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  _CheckoutSummary(
-                    amount: widget.amount,
-                    currency: widget.currency,
-                    merchantOrderId: widget.merchantOrderId,
-                  ),
-                  const SizedBox(height: 20),
-                  if (state.stage == FastPayFlowStage.creatingSession ||
-                      state.stage == FastPayFlowStage.initial)
-                    const _LoadingCard(
-                      title: 'Creating secure session',
-                      message: 'FastPay is preparing the checkout.',
-                    )
-                  else if (state.stage == FastPayFlowStage.ready ||
-                      state.stage == FastPayFlowStage.processing)
-                    Stack(
+            return SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: <Widget>[
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: theme.colorScheme.outlineVariant,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: <Widget>[
-                              Text(
-                                'Card details',
-                                style: theme.textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Your card details are used only for this payment attempt and are not stored by the SDK.',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              FastPayCardForm(
-                                enabled: !state.isBusy,
-                                onSubmit: (cardDetails) async {
-                                  await _controller.submitCard(
-                                    cardDetails: cardDetails,
-                                    customer: widget.customer,
-                                    merchantOrderId: widget.merchantOrderId,
-                                    metadata: widget.metadata,
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
+                        _CheckoutHeader(
+                          onClose: () => _close(_controller.state.result),
                         ),
-                        if (state.isBusy)
-                          Positioned.fill(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Center(
-                                child: CircularProgressIndicator(),
-                              ),
+                        const SizedBox(height: 20),
+                        _CheckoutSummary(
+                          amount: widget.amount,
+                          currency: widget.currency,
+                          merchantOrderId: widget.merchantOrderId,
+                        ),
+                        const SizedBox(height: 18),
+                        if (state.stage == FastPayFlowStage.creatingSession ||
+                            state.stage ==
+                                FastPayFlowStage.initial) ...<Widget>[
+                          const _PaymentMethodCard(),
+                          const SizedBox(height: 18),
+                          const _StatusCard(
+                            title: 'Creating secure session',
+                            message:
+                                'FastPay is preparing your checkout and validating the payment request.',
+                            icon: Icons.shield_outlined,
+                          ),
+                        ] else if (state.stage ==
+                            FastPayFlowStage.ready) ...<Widget>[
+                          const _PaymentMethodCard(),
+                          const SizedBox(height: 18),
+                          Container(
+                            padding: const EdgeInsets.all(22),
+                            decoration: fastPaySurfaceDecoration(),
+                            child: FastPayCardForm(
+                              amount: widget.amount,
+                              currency: widget.currency,
+                              enabled: true,
+                              onSubmit: (cardDetails) async {
+                                await _controller.submitCard(
+                                  cardDetails: cardDetails,
+                                  customer: widget.customer,
+                                  merchantOrderId: widget.merchantOrderId,
+                                  metadata: widget.metadata,
+                                );
+                              },
                             ),
                           ),
+                        ] else if (state.stage == FastPayFlowStage.processing)
+                          const _StatusCard(
+                            title: 'Processing your payment',
+                            message:
+                                'Please do not close this page while we confirm the transaction with the gateway.',
+                            icon: Icons.bolt_rounded,
+                            showSpinner: true,
+                          )
+                        else if (state.result != null)
+                          FastPayResultView(
+                            result: state.result!,
+                            onDone: () => _close(state.result),
+                            onRetry: state.result!.isFailure
+                                ? _controller.prepareRetry
+                                : null,
+                            onRefreshStatus: state.result!.isPending
+                                ? () async {
+                                    await _controller.checkStatus();
+                                  }
+                                : null,
+                          ),
+                        if (state.errorMessage != null &&
+                            state.stage == FastPayFlowStage.ready) ...<Widget>[
+                          const SizedBox(height: 18),
+                          _InlineNotice(message: state.errorMessage!),
+                        ],
+                        const SizedBox(height: 16),
+                        Text(
+                          'Powered by FastPay',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: FastPayCheckoutPalette.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
                       ],
-                    )
-                  else if (state.result != null)
-                    FastPayResultView(
-                      result: state.result!,
-                      onDone: () => _close(state.result),
-                      onRetry: state.result!.isFailure
-                          ? _controller.prepareRetry
-                          : null,
-                      onRefreshStatus: state.result!.isPending
-                          ? () async {
-                              await _controller.checkStatus();
-                            }
-                          : null,
                     ),
-                ],
+                  ),
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -220,6 +220,91 @@ class _FastPayCheckoutPageState extends State<FastPayCheckoutPage> {
   }
 }
 
+class _CheckoutHeader extends StatelessWidget {
+  const _CheckoutHeader({required this.onClose});
+
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
+    return Row(
+      children: <Widget>[
+        _CircleIconButton(icon: Icons.arrow_back_rounded, onPressed: onClose),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'FastPay',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: FastPayCheckoutPalette.textPrimary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Secure checkout',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: FastPayCheckoutPalette.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: FastPayCheckoutPalette.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: FastPayCheckoutPalette.border),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(
+                Icons.lock_outline_rounded,
+                size: 16,
+                color: FastPayCheckoutPalette.primary,
+              ),
+              SizedBox(width: 6),
+              Text(
+                'SSL',
+                style: TextStyle(
+                  color: FastPayCheckoutPalette.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CircleIconButton extends StatelessWidget {
+  const _CircleIconButton({required this.icon, required this.onPressed});
+
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: FastPayCheckoutPalette.surface,
+      shape: const CircleBorder(),
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Icon(icon, color: FastPayCheckoutPalette.textPrimary),
+      ),
+    );
+  }
+}
+
 class _CheckoutSummary extends StatelessWidget {
   const _CheckoutSummary({
     required this.amount,
@@ -236,52 +321,318 @@ class _CheckoutSummary extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
 
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: <Color>[Color(0xFF062E2D), Color(0xFF0C6C66)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-      ),
+      padding: const EdgeInsets.all(22),
+      decoration: fastPaySurfaceDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(
-            'Amount due',
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: Colors.white70,
-              letterSpacing: 0.6,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '$amount $currency',
-            style: theme.textTheme.headlineMedium?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          if (merchantOrderId != null) ...<Widget>[
-            const SizedBox(height: 8),
-            Text(
-              'Order: $merchantOrderId',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: Colors.white.withValues(alpha: 0.85),
+          Row(
+            children: <Widget>[
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: FastPayCheckoutPalette.primarySoft,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.shopping_bag_outlined,
+                  color: FastPayCheckoutPalette.primary,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'Order summary',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: FastPayCheckoutPalette.textPrimary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Review the payment details before you continue.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: FastPayCheckoutPalette.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _SummaryRow(
+            label: 'Payment amount',
+            value: formatFastPayAmount(amount, currency),
+            emphasize: true,
+          ),
+          _SummaryRow(label: 'Payment method', value: 'Credit card'),
+          if (merchantOrderId != null)
+            _SummaryRow(label: 'Order reference', value: merchantOrderId!),
         ],
       ),
     );
   }
 }
 
-class _LoadingCard extends StatelessWidget {
-  const _LoadingCard({required this.title, required this.message});
+class _SummaryRow extends StatelessWidget {
+  const _SummaryRow({
+    required this.label,
+    required this.value,
+    this.emphasize = false,
+  });
+
+  final String label;
+  final String value;
+  final bool emphasize;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: FastPayCheckoutPalette.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Flexible(
+            child: Text(
+              value,
+              style:
+                  (emphasize
+                          ? theme.textTheme.titleMedium
+                          : theme.textTheme.bodyMedium)
+                      ?.copyWith(
+                        color: FastPayCheckoutPalette.textPrimary,
+                        fontWeight: FontWeight.w800,
+                      ),
+              textAlign: TextAlign.end,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PaymentMethodCard extends StatelessWidget {
+  const _PaymentMethodCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: fastPaySurfaceDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            'Choose payment method',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: FastPayCheckoutPalette.textPrimary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Card payments are available now. Additional methods can be added by the merchant later.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: FastPayCheckoutPalette.textSecondary,
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 18),
+          const _PaymentMethodOption(
+            icon: Icons.credit_card_rounded,
+            label: 'Credit card',
+            subtitle: 'Visa, Mastercard, Meeza',
+            active: true,
+          ),
+          const SizedBox(height: 12),
+          const _PaymentMethodOption(
+            icon: Icons.account_balance_wallet_outlined,
+            label: 'Wallet',
+            subtitle: 'Coming soon',
+          ),
+          const SizedBox(height: 12),
+          const _PaymentMethodOption(
+            icon: Icons.account_balance_outlined,
+            label: 'Bank transfer',
+            subtitle: 'Coming soon',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PaymentMethodOption extends StatelessWidget {
+  const _PaymentMethodOption({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    this.active = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: active
+            ? FastPayCheckoutPalette.primarySoft
+            : FastPayCheckoutPalette.surfaceMuted,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: active
+              ? FastPayCheckoutPalette.primary
+              : FastPayCheckoutPalette.border,
+        ),
+      ),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: active
+                  ? FastPayCheckoutPalette.primary
+                  : FastPayCheckoutPalette.surface,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(
+              icon,
+              color: active
+                  ? Colors.white
+                  : FastPayCheckoutPalette.textSecondary,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  label,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: FastPayCheckoutPalette.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: FastPayCheckoutPalette.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            active ? Icons.radio_button_checked : Icons.radio_button_off,
+            color: active
+                ? FastPayCheckoutPalette.primary
+                : FastPayCheckoutPalette.border,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusCard extends StatelessWidget {
+  const _StatusCard({
+    required this.title,
+    required this.message,
+    required this.icon,
+    this.showSpinner = false,
+  });
 
   final String title;
+  final String message;
+  final IconData icon;
+  final bool showSpinner;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(28),
+      decoration: fastPaySurfaceDecoration(),
+      child: Column(
+        children: <Widget>[
+          Container(
+            width: 74,
+            height: 74,
+            decoration: BoxDecoration(
+              color: FastPayCheckoutPalette.primarySoft,
+              shape: BoxShape.circle,
+            ),
+            child: showSpinner
+                ? const Padding(
+                    padding: EdgeInsets.all(18),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        FastPayCheckoutPalette.primary,
+                      ),
+                    ),
+                  )
+                : Icon(icon, size: 34, color: FastPayCheckoutPalette.primary),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            title,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: FastPayCheckoutPalette.textPrimary,
+              fontWeight: FontWeight.w800,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: FastPayCheckoutPalette.textSecondary,
+              height: 1.55,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InlineNotice extends StatelessWidget {
+  const _InlineNotice({required this.message});
+
   final String message;
 
   @override
@@ -289,29 +640,28 @@ class _LoadingCard extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
+        color: FastPayCheckoutPalette.dangerSoft,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: FastPayCheckoutPalette.danger),
       ),
-      child: Column(
+      child: Row(
         children: <Widget>[
-          const CircularProgressIndicator(),
-          const SizedBox(height: 20),
-          Text(
-            title,
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+          const Icon(
+            Icons.error_outline_rounded,
+            color: FastPayCheckoutPalette.danger,
           ),
-          const SizedBox(height: 8),
-          Text(
-            message,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: FastPayCheckoutPalette.textPrimary,
+                height: 1.45,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),

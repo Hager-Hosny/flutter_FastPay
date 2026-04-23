@@ -22,12 +22,13 @@ void main() {
     );
 
     expect(find.text('Creating secure session'), findsOneWidget);
+    expect(find.text('Choose payment method'), findsOneWidget);
 
     await tester.pump();
     await tester.pump();
 
-    expect(find.text('Card details'), findsOneWidget);
-    expect(find.text('Pay now'), findsOneWidget);
+    expect(find.text('Card information'), findsOneWidget);
+    expect(find.text('Pay 150.00 EGP'), findsOneWidget);
   });
 }
 

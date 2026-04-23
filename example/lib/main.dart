@@ -1,4 +1,5 @@
 import 'package:fastpay_sdk/fastpay_sdk.dart';
+import 'package:fastpay_sdk/src/ui/fastpay_checkout_theme.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -22,8 +23,9 @@ class ExampleApp extends StatelessWidget {
     return MaterialApp(
       title: 'FastPay SDK Example',
       theme: ThemeData(
+        scaffoldBackgroundColor: FastPayCheckoutPalette.background,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0C6C66),
+          seedColor: FastPayCheckoutPalette.primary,
           brightness: Brightness.light,
         ),
         useMaterial3: true,
@@ -49,49 +51,57 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
     final ThemeData theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('FastPay SDK Example')),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text('FastPay SDK Example'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: <Widget>[
           Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: <Color>[Color(0xFF062E2D), Color(0xFF0C6C66)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(24),
-            ),
+            padding: const EdgeInsets.all(24),
+            decoration: fastPaySurfaceDecoration(),
             child: const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  'Demo Payment',
+                  'Demo payment',
                   style: TextStyle(
-                    color: Colors.white70,
-                    fontWeight: FontWeight.w600,
+                    color: FastPayCheckoutPalette.textSecondary,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 SizedBox(height: 8),
                 Text(
                   '150.00 EGP',
                   style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
+                    color: FastPayCheckoutPalette.textPrimary,
+                    fontSize: 30,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
                 SizedBox(height: 8),
                 Text(
                   'Replace the placeholder API credentials in example/main.dart before testing against the live FastPay backend.',
-                  style: TextStyle(color: Colors.white, height: 1.4),
+                  style: TextStyle(
+                    color: FastPayCheckoutPalette.textSecondary,
+                    height: 1.5,
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 24),
           FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: FastPayCheckoutPalette.primary,
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(56),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+            ),
             onPressed: _busy ? null : _openCheckout,
             child: Text(_busy ? 'Opening...' : 'Open FastPay Checkout'),
           ),
@@ -104,22 +114,24 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
               ),
             ),
             const SizedBox(height: 12),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text('Outcome: ${_lastResult!.outcome.name}'),
-                    Text('Status: ${_lastResult!.status ?? 'unknown'}'),
-                    Text(
-                      'Message: ${_lastResult!.errorMessage ?? _lastResult!.transaction?.message ?? 'n/a'}',
-                    ),
-                    Text(
-                      'Transaction: ${_lastResult!.transaction?.transactionId ?? 'n/a'}',
-                    ),
-                  ],
-                ),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: fastPaySurfaceDecoration(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text('Outcome: ${_lastResult!.outcome.name}'),
+                  const SizedBox(height: 6),
+                  Text('Status: ${_lastResult!.status ?? 'unknown'}'),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Message: ${_lastResult!.errorMessage ?? _lastResult!.transaction?.message ?? 'n/a'}',
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Transaction: ${_lastResult!.transaction?.transactionId ?? 'n/a'}',
+                  ),
+                ],
               ),
             ),
           ],
