@@ -20,7 +20,7 @@ class ApiResult<T> {
     }
 
     throw exception ??
-        const ApiException(
+        ApiException(
           type: ApiExceptionType.unknown,
           message: 'FastPay operation failed without an exception payload.',
         );

@@ -1,63 +1,177 @@
 /// Categories used for typed API failures.
 enum ApiExceptionType {
-  badRequest,
-  unauthorized,
-  forbidden,
+  validation,
+  authentication,
+  authorization,
   notFound,
-  timeout,
+  businessRule,
   network,
+  timeout,
   parsing,
   configuration,
   server,
   unknown,
 }
 
-/// Typed exception surfaced by the FastPay SDK.
+/// Base typed exception surfaced by the FastPay SDK.
 class ApiException implements Exception {
-  /// Creates an [ApiException].
-  const ApiException({
+  ApiException({
     required this.type,
     required this.message,
     this.statusCode,
-    this.details,
+    this.errorCode,
+    this.fieldErrors = const <String, String>{},
+    this.requestId,
+    this.rawPayload,
     this.cause,
   });
 
-  /// The error category.
   final ApiExceptionType type;
-
-  /// Human-readable description.
   final String message;
-
-  /// Optional HTTP status code.
   final int? statusCode;
-
-  /// Optional error details payload.
-  final Map<String, dynamic>? details;
-
-  /// Optional underlying cause.
+  final String? errorCode;
+  final Map<String, String> fieldErrors;
+  final String? requestId;
+  final Map<String, dynamic>? rawPayload;
   final Object? cause;
-
-  /// Creates a configuration failure.
-  factory ApiException.configuration(String message) {
-    return ApiException(type: ApiExceptionType.configuration, message: message);
-  }
-
-  /// Creates a parsing failure.
-  factory ApiException.parsing(
-    String message, {
-    Map<String, dynamic>? details,
-  }) {
-    return ApiException(
-      type: ApiExceptionType.parsing,
-      message: message,
-      details: details,
-    );
-  }
 
   @override
   String toString() {
-    final String code = statusCode == null ? '' : ' (statusCode: $statusCode)';
-    return 'ApiException[$type]$code: $message';
+    final String status = statusCode == null ? '' : ' status=$statusCode';
+    final String code = errorCode == null ? '' : ' code=$errorCode';
+    final String request = requestId == null ? '' : ' requestId=$requestId';
+    return 'ApiException[$type$status$code$request]: $message';
   }
+}
+
+class ValidationApiException extends ApiException {
+  ValidationApiException({
+    required super.message,
+    super.statusCode,
+    super.errorCode,
+    super.fieldErrors,
+    super.requestId,
+    super.rawPayload,
+    super.cause,
+  }) : super(type: ApiExceptionType.validation);
+}
+
+class AuthenticationApiException extends ApiException {
+  AuthenticationApiException({
+    required super.message,
+    super.statusCode,
+    super.errorCode,
+    super.fieldErrors,
+    super.requestId,
+    super.rawPayload,
+    super.cause,
+  }) : super(type: ApiExceptionType.authentication);
+}
+
+class AuthorizationApiException extends ApiException {
+  AuthorizationApiException({
+    required super.message,
+    super.statusCode,
+    super.errorCode,
+    super.fieldErrors,
+    super.requestId,
+    super.rawPayload,
+    super.cause,
+  }) : super(type: ApiExceptionType.authorization);
+}
+
+class NotFoundApiException extends ApiException {
+  NotFoundApiException({
+    required super.message,
+    super.statusCode,
+    super.errorCode,
+    super.fieldErrors,
+    super.requestId,
+    super.rawPayload,
+    super.cause,
+  }) : super(type: ApiExceptionType.notFound);
+}
+
+class BusinessRuleApiException extends ApiException {
+  BusinessRuleApiException({
+    required super.message,
+    super.statusCode,
+    super.errorCode,
+    super.fieldErrors,
+    super.requestId,
+    super.rawPayload,
+    super.cause,
+  }) : super(type: ApiExceptionType.businessRule);
+}
+
+class NetworkApiException extends ApiException {
+  NetworkApiException({
+    required super.message,
+    super.statusCode,
+    super.errorCode,
+    super.fieldErrors,
+    super.requestId,
+    super.rawPayload,
+    super.cause,
+  }) : super(type: ApiExceptionType.network);
+}
+
+class TimeoutApiException extends ApiException {
+  TimeoutApiException({
+    required super.message,
+    super.statusCode,
+    super.errorCode,
+    super.fieldErrors,
+    super.requestId,
+    super.rawPayload,
+    super.cause,
+  }) : super(type: ApiExceptionType.timeout);
+}
+
+class ParsingApiException extends ApiException {
+  ParsingApiException({
+    required super.message,
+    super.statusCode,
+    super.errorCode,
+    super.fieldErrors,
+    super.requestId,
+    super.rawPayload,
+    super.cause,
+  }) : super(type: ApiExceptionType.parsing);
+}
+
+class ConfigurationApiException extends ApiException {
+  ConfigurationApiException({
+    required super.message,
+    super.statusCode,
+    super.errorCode,
+    super.fieldErrors,
+    super.requestId,
+    super.rawPayload,
+    super.cause,
+  }) : super(type: ApiExceptionType.configuration);
+}
+
+class ServerApiException extends ApiException {
+  ServerApiException({
+    required super.message,
+    super.statusCode,
+    super.errorCode,
+    super.fieldErrors,
+    super.requestId,
+    super.rawPayload,
+    super.cause,
+  }) : super(type: ApiExceptionType.server);
+}
+
+class UnknownApiException extends ApiException {
+  UnknownApiException({
+    required super.message,
+    super.statusCode,
+    super.errorCode,
+    super.fieldErrors,
+    super.requestId,
+    super.rawPayload,
+    super.cause,
+  }) : super(type: ApiExceptionType.unknown);
 }

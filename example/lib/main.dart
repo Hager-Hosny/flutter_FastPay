@@ -6,7 +6,7 @@ void main() {
     const FastPayConfig(
       baseUrl: 'https://api.fastpay.dpdns.org',
       apiKey: 'pk_test_replace_me',
-      apiSecret: 'sk_test_replace_me',
+      accessToken: 'merchant_backend_issued_token',
       merchantId: 'merchant_demo',
     ),
   );
@@ -113,10 +113,10 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
                     Text('Outcome: ${_lastResult!.outcome.name}'),
                     Text('Status: ${_lastResult!.status ?? 'unknown'}'),
                     Text(
-                      'Message: ${_lastResult!.errorMessage ?? _lastResult!.transaction?.message ?? 'n/a'}',
+                      'Message: ${_lastResult!.errorMessage ?? 'n/a'}',
                     ),
                     Text(
-                      'Transaction: ${_lastResult!.transaction?.transactionId ?? 'n/a'}',
+                      'Payment ID: ${_lastResult!.payment?.paymentId ?? _lastResult!.session?.paymentId ?? 'n/a'}',
                     ),
                   ],
                 ),
@@ -143,6 +143,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
         phone: '605-590-6006',
       ),
       merchantOrderId: 'ORD-10001',
+      callbackUrl: 'https://merchant.example.com/api/fastpay/callback',
     );
 
     if (!mounted) {

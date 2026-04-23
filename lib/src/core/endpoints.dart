@@ -1,69 +1,71 @@
 /// Configurable endpoint definitions for the FastPay backend.
 class FastPayEndpoints {
-  /// Creates a [FastPayEndpoints] instance.
   const FastPayEndpoints({
     this.authToken = '/auth/token',
     this.refreshToken = '/auth/refresh',
+    this.logout = '/auth/logout',
+    this.paymentMethods = '/payment-methods',
     this.createSession = '/payments/session',
-    this.processTransaction = '/payments/process-transaction',
-    this.getTransactionStatus = '/payments/transaction-status',
     this.paymentDetailsTemplate = '/payments/{payment_id}',
-    this.retryPayment = '/payments/retry',
     this.retryPaymentTemplate = '/payments/{payment_id}/retry',
+    this.cancelPaymentTemplate = '/payments/{payment_id}/cancel',
+    this.transactions = '/transactions',
+    this.transactionsSummary = '/transactions/summary',
+    this.refunds = '/refunds',
+    this.payouts = '/payouts',
   });
 
-  /// Public auth endpoint used to exchange API credentials for a JWT.
   final String authToken;
-
-  /// Public auth refresh endpoint.
   final String refreshToken;
-
-  /// Protected endpoint that creates a payment session.
+  final String logout;
+  final String paymentMethods;
   final String createSession;
-
-  /// Protected endpoint that processes a card payment for a session.
-  ///
-  /// TODO(Postman): confirm the exact path for transaction processing.
-  final String processTransaction;
-
-  /// Protected endpoint that looks up the latest transaction status.
-  ///
-  /// TODO(Postman): confirm the exact status lookup route and method.
-  final String getTransactionStatus;
-
-  /// Protected documented route that returns payment details.
   final String paymentDetailsTemplate;
-
-  /// Protected retry endpoint when the backend uses a body-based route.
-  ///
-  /// TODO(Postman): confirm whether this route exists or if only the templated
-  /// payment retry route is supported.
-  final String retryPayment;
-
-  /// Protected documented route that retries an existing payment.
   final String retryPaymentTemplate;
+  final String cancelPaymentTemplate;
+  final String transactions;
+  final String transactionsSummary;
+  final String refunds;
+  final String payouts;
 
-  /// Returns a copy with the provided overrides.
+  String paymentDetails(String paymentId) =>
+      paymentDetailsTemplate.replaceFirst('{payment_id}', paymentId);
+
+  String retryPayment(String paymentId) =>
+      retryPaymentTemplate.replaceFirst('{payment_id}', paymentId);
+
+  String cancelPayment(String paymentId) =>
+      cancelPaymentTemplate.replaceFirst('{payment_id}', paymentId);
+
   FastPayEndpoints copyWith({
     String? authToken,
     String? refreshToken,
+    String? logout,
+    String? paymentMethods,
     String? createSession,
-    String? processTransaction,
-    String? getTransactionStatus,
     String? paymentDetailsTemplate,
-    String? retryPayment,
     String? retryPaymentTemplate,
+    String? cancelPaymentTemplate,
+    String? transactions,
+    String? transactionsSummary,
+    String? refunds,
+    String? payouts,
   }) {
     return FastPayEndpoints(
       authToken: authToken ?? this.authToken,
       refreshToken: refreshToken ?? this.refreshToken,
+      logout: logout ?? this.logout,
+      paymentMethods: paymentMethods ?? this.paymentMethods,
       createSession: createSession ?? this.createSession,
-      processTransaction: processTransaction ?? this.processTransaction,
-      getTransactionStatus: getTransactionStatus ?? this.getTransactionStatus,
       paymentDetailsTemplate:
           paymentDetailsTemplate ?? this.paymentDetailsTemplate,
-      retryPayment: retryPayment ?? this.retryPayment,
       retryPaymentTemplate: retryPaymentTemplate ?? this.retryPaymentTemplate,
+      cancelPaymentTemplate:
+          cancelPaymentTemplate ?? this.cancelPaymentTemplate,
+      transactions: transactions ?? this.transactions,
+      transactionsSummary: transactionsSummary ?? this.transactionsSummary,
+      refunds: refunds ?? this.refunds,
+      payouts: payouts ?? this.payouts,
     );
   }
 }
